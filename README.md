@@ -36,7 +36,7 @@ This repository is intended for **personal, educational, or approved non-commerc
 - Modifying repository structure or scripts without **explicit consent**.  
 - Using assets in unrelated projects without proper attribution.  
 
-Refer to the [LPSL-GitHub License](LICENSE) for full terms.
+Refer to the [LPSL-GitHub License](LICENSE.txt) for full terms.
 
 
 ## 👨‍💻 Credits
