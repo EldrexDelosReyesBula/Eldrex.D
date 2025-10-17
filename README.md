@@ -1,6 +1,6 @@
 # 🚀 Eldrex.D
 
-[![License](https://img.shields.io/badge/License-LPSL%20GitHub-blue)](LICENSE)  
+[![License](https://img.shields.io/badge/License-LPSL%20GitHub-blue)](LICENSE.txt)  
 [![Website](https://img.shields.io/badge/Website-designx.landecs.org-brightgreen)](https://designx.landecs.org)
 
 
