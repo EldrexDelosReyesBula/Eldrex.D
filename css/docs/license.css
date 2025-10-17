@@ -1,0 +1,149 @@
+        :root {
+            --sage-50: #f8faf9;
+            --sage-100: #f1f4f3;
+            --sage-200: #e4e9e7;
+            --sage-300: #d1d9d5;
+            --sage-400: #a8b8b1;
+            --sage-500: #879a90;
+            --sage-600: #6a7f74;
+            --sage-700: #57685f;
+            --sage-800: #48544d;
+            --sage-900: #3e4742;
+            --sage-950: #252c28;
+            
+            --bg-color: var(--sage-50);
+            --text-color: var(--sage-950);
+            --accent-color: var(--sage-600);
+            --glass-color: rgba(134, 154, 144, 0.1);
+            --glass-blur: 16px;
+            --glass-border: rgba(106, 127, 116, 0.15);
+            --transition-speed: 0.3s;
+            --card-bg: var(--sage-100);
+            --header-bg: rgba(248, 250, 249, 0.9);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            height: 100vh;
+            overflow: hidden;
+            line-height: 1.6;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1.5rem;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 100;
+            background: var(--header-bg);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border-bottom: 1px solid var(--glass-border);
+            box-sizing: border-box;
+        }
+
+        header a {
+            color: var(--sage-700);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1rem;
+            padding: 10px 16px;
+            border: 1.5px solid var(--sage-300);
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            transition: all var(--transition-speed) ease;
+            background: var(--sage-100);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            box-shadow: 0 2px 8px rgba(106, 127, 116, 0.08);
+        }
+
+        header a:hover {
+            background: var(--sage-200);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(106, 127, 116, 0.12);
+            border-color: var(--sage-400);
+        }
+
+        header a i {
+            margin-right: 0.5rem;
+            color: var(--sage-600);
+        }
+
+        .iframe-container {
+            position: absolute;
+            top: 80px;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 1rem;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: center;
+            align-items: stretch;
+        }
+
+        iframe {
+            width: 100%;
+            max-width: 1960px;
+            border: none;
+            border-radius: 12px;
+            background: var(--card-bg);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            box-shadow: 0 8px 32px rgba(106, 127, 116, 0.12);
+            border: 1px solid var(--glass-border);
+        }
+
+        .license-header {
+            padding: 1.5rem;
+            background: var(--sage-100);
+            border-bottom: 1px solid var(--sage-200);
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .license-header h1 {
+            margin: 0;
+            color: var(--sage-800);
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .license-header p {
+            margin: 0.5rem 0 0;
+            color: var(--sage-600);
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 600px) {
+            .iframe-container {
+                padding: 0.75rem;
+                top: 70px;
+            }
+
+            header {
+                padding: 0.75rem;
+            }
+
+            header a {
+                padding: 8px 12px;
+                font-size: 0.9rem;
+            }
+            
+            .license-header {
+                padding: 1rem;
+            }
+            
+            .license-header h1 {
+                font-size: 1.3rem;
+            }
+        }
