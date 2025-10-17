@@ -48,7 +48,7 @@ Refer to the [LPSL-GitHub License](LICENSE) for full terms.
 
 1. **Clone the repository:**  
 ```bash
-git clone https://github.com/EldrexDelosReyesBula/Eldrex.D.git```
+git clone https://github.com/EldrexDelosReyesBula/Eldrex.D.git
 
 2. Link CSS and JS files to your HTML or Neocities site.
 
