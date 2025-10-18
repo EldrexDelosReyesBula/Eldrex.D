@@ -303,6 +303,34 @@
                         <p>So, whenever someone says we cannot, let us answer by proving that we can. Because sometimes, belief is not just about faith...it is about the courage to begin the change we wish to see.</p>
                         <p>𝐂𝐂𝐓𝐎: 𝘐𝘮𝘢𝘨𝘦 𝘯𝘰𝘵 𝘮𝘪𝘯𝘦; 𝘤𝘳𝘦𝘥𝘪𝘵𝘴 𝘵𝘰 𝘵𝘩𝘦 𝘳𝘪𝘨𝘵𝘩𝘧𝘶𝘭 𝘰𝘸𝘯𝘦𝘳.</p>
                     `
+                },
+                {
+                    id: 4,
+                    title: "The strongest people are not those who show strength in front of us, but those who fight battles we know nothing about.",
+                    image: "post/qoute01.png",
+                    date: "October 18, 2025",
+                    content: `
+                            <p>“The strongest people are not those who show strength in front of us, but those who fight battles we know nothing about.”</p><br>
+                            <p>This quote reminds me of how strength is often misunderstood. Many people think being strong 𝒎𝒆𝒂𝒏𝒔 𝒏𝒆𝒗𝒆𝒓 𝒄𝒓𝒚𝒊𝒏𝒈, 𝒏𝒆𝒗𝒆𝒓 𝒃𝒓𝒆𝒂𝒌𝒊𝒏𝒈, 𝒐𝒓 𝒂𝒍𝒘𝒂𝒚𝒔 𝒃𝒆𝒊𝒏𝒈 𝒃𝒓𝒂𝒗𝒆 𝒊𝒏 𝒇𝒓𝒐𝒏𝒕 𝒐𝒇 𝒐𝒕𝒉𝒆𝒓𝒔. But through my own experiences, I have learned that real strength is quiet. It happens 𝒘𝒉𝒆𝒏 𝒏𝒐 𝒐𝒏𝒆 𝒊𝒔 𝒘𝒂𝒕𝒄𝒉𝒊𝒏𝒈, in the moments when you have every reason to give up, but still choose to keep going.</p>
+                            <p>There were times in my life when 𝑰 𝒍𝒐𝒐𝒌𝒆𝒅 𝒇𝒊𝒏𝒆 𝒐𝒏 𝒕𝒉𝒆 𝒐𝒖𝒕𝒔𝒊𝒅𝒆, 𝒚𝒆𝒕 𝒊𝒏𝒔𝒊𝒅𝒆, 𝑰 𝒘𝒂𝒔 𝒇𝒂𝒍𝒍𝒊𝒏𝒈 𝒂𝒑𝒂𝒓𝒕. I smiled, talked, and pretended everything was okay because 𝑰 𝒅𝒊𝒅 𝒏𝒐𝒕 𝒘𝒂𝒏𝒕 𝒂𝒏𝒚𝒐𝒏𝒆 𝒕𝒐 𝒘𝒐𝒓𝒓𝒚. Those moments taught me that strength is not about how loud your courage sounds, but 𝒉𝒐𝒘 𝒕𝒓𝒖𝒍𝒚 𝒚𝒐𝒖 𝒄𝒂𝒏 𝒆𝒏𝒅𝒖𝒓𝒆 𝒘𝒊𝒕𝒉𝒐𝒖𝒕 𝒍𝒐𝒔𝒊𝒏𝒈 𝒚𝒐𝒖𝒓𝒔𝒆𝒍𝒇. Sometimes, it means holding your tears until you are alone, or standing up again after being knocked down by something no one else even noticed.</p>
+                            <p>I realized that everyone has silent battles. Some fight loneliness, others deal with 𝒑𝒂𝒊𝒏 𝒕𝒉𝒂𝒕 𝒘𝒐𝒓𝒅𝒔 𝒄𝒂𝒏𝒏𝒐𝒕 𝒆𝒙𝒑𝒍𝒂𝒊𝒏. And yet, they still choose kindness, still choose to wake up and try again. That, to me, is the 𝒑𝒖𝒓𝒆𝒔𝒕 𝒇𝒐𝒓𝒎 𝒐𝒇 𝒔𝒕𝒓𝒆𝒏𝒈𝒕𝒉...continuing to live with hope 𝒆𝒗𝒆𝒏 𝒘𝒉𝒆𝒏 𝒍𝒊𝒇𝒆 𝒇𝒆𝒆𝒍𝒔 𝒅𝒊𝒇𝒇𝒊𝒄𝒖𝒍𝒕.</p>
+                            <p>This quote inspires me to be more understanding toward others. We never truly know what someone is going through, so the least we can do is 𝐛𝐞 𝐠𝐞𝐧𝐭𝐥𝐞. Even a simple smile or kind word can make a difference to someone who is silently struggling.</p>
+                            <p>I learned that strength is not shown in front of people. It is built in 𝒒𝒖𝒊𝒆𝒕 𝒑𝒍𝒂𝒄𝒆𝒔, 𝒊𝒏 𝒔𝒍𝒆𝒆𝒑𝒍𝒆𝒔𝒔 𝒏𝒊𝒈𝒉𝒕𝒔, and in the heart that keeps beating despite the weight it carries. True strength is not about winning every battle...it is about choosing to fight them, even when no one sees.</p>
+                    `
+                },
+                {
+                    id: 5,
+                    title: "The strongest people are not those who show strength in front of us, but those who fight battles we know nothing about.",
+                    image: "post/qoute02.png",
+                    date: "October 18, 2025",
+                    content: `
+                            <p>“If you have time to sit, you have time to work.”</p><br>
+                            <p>There were days when I used to sit quietly, doing nothing but thinking about what I wanted to achieve. I would look at the clock, telling myself I still had time, that maybe I’d start later. But later often turned into never. It was during one of those long pauses in my life that I realized something simple yet powerful.... 𝐭𝐢𝐦𝐞 𝐧𝐞𝐯𝐞𝐫 𝐬𝐭𝐨𝐩𝐬, 𝐞𝐯𝐞𝐧 𝐰𝐡𝐞𝐧 𝐢 𝐝𝐨.</p>
+                            <p>From that moment, I started to see things differently. Every minute I spent sitting and waiting was a minute I could have used to create, learn, or move closer to something meaningful. The words “𝐈𝐟 𝐲𝐨𝐮 𝐡𝐚𝐯𝐞 𝐭𝐢𝐦𝐞 𝐭𝐨 𝐬𝐢𝐭, 𝐲𝐨𝐮 𝐡𝐚𝐯𝐞 𝐭𝐢𝐦𝐞 𝐭𝐨 𝐰𝐨𝐫𝐤” began to shape the way I viewed effort. It reminded me that 𝘸𝘰𝘳𝘬 𝘪𝘴𝘯'𝘵 𝘫𝘶𝘴𝘵 𝘢𝘣𝘰𝘶𝘵 𝘣𝘦𝘪𝘯𝘨 𝘣𝘶𝘴𝘺; 𝘐𝘵'𝘴 𝘢𝘣𝘰𝘶𝘵 𝘮𝘢𝘬𝘪𝘯𝘨 𝘶𝘴𝘦 𝘰𝘧 𝘵𝘩𝘦 𝘮𝘰𝘮𝘦𝘯𝘵𝘴 𝘵𝘩𝘢𝘵 𝘰𝘧𝘵𝘦𝘯 𝘴𝘭𝘪𝘱 𝘢𝘸𝘢𝘺 𝘶𝘯𝘯𝘰𝘵𝘪𝘤𝘦𝘥.</p>
+                            <p>I learned that 𝙥𝙧𝙤𝙜𝙧𝙚𝙨𝙨 𝙘𝙤𝙢𝙚𝙨 𝙦𝙪𝙞𝙚𝙩𝙡𝙮, not from grand bursts of motivation but from the 𝒔𝒎𝒂𝒍𝒍 𝒂𝒄𝒕𝒊𝒐𝒏𝒔 𝒘𝒆 𝒕𝒂𝒌𝒆 𝒘𝒉𝒆𝒏 𝒏𝒐 𝒐𝒏𝒆 𝒆𝒍𝒔𝒆 𝒊𝒔 𝒑𝒖𝒔𝒉𝒊𝒏𝒈 𝒖𝒔. Whether it’s writing, studying, or simply improving a little each day, those are the things that build our future piece by piece.</p>
+                            <p>Of course, I’ve also come to understand that rest has its own importance. But there’s a difference between resting and simply wasting time. 𝐓𝐫𝐮𝐞 𝐫𝐞𝐬𝐭 𝐠𝐢𝐯𝐞𝐬 𝐬𝐭𝐫𝐞𝐧𝐠𝐭𝐡, 𝐰𝐡𝐢𝐥𝐞 𝐢𝐝𝐥𝐞𝐧𝐞𝐬𝐬 𝐬𝐭𝐞𝐚𝐥𝐬 𝐢𝐭. So whenever I find myself sitting with too much time in my hands, I try to ask, “𝑊ℎ𝑎𝑡 𝑐𝑎𝑛 𝐼 𝑑𝑜 𝑛𝑜𝑤 𝑡ℎ𝑎𝑡 𝑤𝑖𝑙𝑙 𝑚𝑎𝑘𝑒 𝑚𝑒 𝑝𝑟𝑜𝑢𝑑 𝑙𝑎𝑡𝑒𝑟?”</p>
+                            <p>This mindset changed the way I live. I no longer wait for the perfect moment to start, because there’s no such thing. 𝑻𝒉𝒆 𝒑𝒆𝒓𝒇𝒆𝒄𝒕 𝒎𝒐𝒎𝒆𝒏𝒕 𝒊𝒔 𝒘𝒉𝒆𝒏𝒆𝒗𝒆𝒓 𝒚𝒐𝒖 𝒅𝒆𝒄𝒊𝒅𝒆 𝒕𝒐 𝒎𝒐𝒗𝒆. After all, if you have time to sit, you also have time to grow, to learn, and to build the life you dream of.</p>
+                    `
                 }
             ];
 
