@@ -307,7 +307,7 @@
                 {
                     id: 4,
                     title: "The strongest people are not those who show strength in front of us, but those who fight battles we know nothing about.",
-                    image: "post/qoute01.png",
+                    image: "https://eldrex.landecs.org/post/qoute01.png",
                     date: "October 18, 2025",
                     content: `
                             <p>“The strongest people are not those who show strength in front of us, but those who fight battles we know nothing about.”</p><br>
@@ -320,11 +320,10 @@
                 },
                 {
                     id: 5,
-                    title: "The strongest people are not those who show strength in front of us, but those who fight battles we know nothing about.",
-                    image: "post/qoute02.png",
+                    title: "If you have time to sit, you have time to work.",
+                    image: "https://eldrex.landecs.org/post/qoute02.png",
                     date: "October 18, 2025",
                     content: `
-                            <p>“If you have time to sit, you have time to work.”</p><br>
                             <p>There were days when I used to sit quietly, doing nothing but thinking about what I wanted to achieve. I would look at the clock, telling myself I still had time, that maybe I’d start later. But later often turned into never. It was during one of those long pauses in my life that I realized something simple yet powerful.... 𝐭𝐢𝐦𝐞 𝐧𝐞𝐯𝐞𝐫 𝐬𝐭𝐨𝐩𝐬, 𝐞𝐯𝐞𝐧 𝐰𝐡𝐞𝐧 𝐢 𝐝𝐨.</p>
                             <p>From that moment, I started to see things differently. Every minute I spent sitting and waiting was a minute I could have used to create, learn, or move closer to something meaningful. The words “𝐈𝐟 𝐲𝐨𝐮 𝐡𝐚𝐯𝐞 𝐭𝐢𝐦𝐞 𝐭𝐨 𝐬𝐢𝐭, 𝐲𝐨𝐮 𝐡𝐚𝐯𝐞 𝐭𝐢𝐦𝐞 𝐭𝐨 𝐰𝐨𝐫𝐤” began to shape the way I viewed effort. It reminded me that 𝘸𝘰𝘳𝘬 𝘪𝘴𝘯'𝘵 𝘫𝘶𝘴𝘵 𝘢𝘣𝘰𝘶𝘵 𝘣𝘦𝘪𝘯𝘨 𝘣𝘶𝘴𝘺; 𝘐𝘵'𝘴 𝘢𝘣𝘰𝘶𝘵 𝘮𝘢𝘬𝘪𝘯𝘨 𝘶𝘴𝘦 𝘰𝘧 𝘵𝘩𝘦 𝘮𝘰𝘮𝘦𝘯𝘵𝘴 𝘵𝘩𝘢𝘵 𝘰𝘧𝘵𝘦𝘯 𝘴𝘭𝘪𝘱 𝘢𝘸𝘢𝘺 𝘶𝘯𝘯𝘰𝘵𝘪𝘤𝘦𝘥.</p>
                             <p>I learned that 𝙥𝙧𝙤𝙜𝙧𝙚𝙨𝙨 𝙘𝙤𝙢𝙚𝙨 𝙦𝙪𝙞𝙚𝙩𝙡𝙮, not from grand bursts of motivation but from the 𝒔𝒎𝒂𝒍𝒍 𝒂𝒄𝒕𝒊𝒐𝒏𝒔 𝒘𝒆 𝒕𝒂𝒌𝒆 𝒘𝒉𝒆𝒏 𝒏𝒐 𝒐𝒏𝒆 𝒆𝒍𝒔𝒆 𝒊𝒔 𝒑𝒖𝒔𝒉𝒊𝒏𝒈 𝒖𝒔. Whether it’s writing, studying, or simply improving a little each day, those are the things that build our future piece by piece.</p>
