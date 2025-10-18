@@ -1,24 +1,25 @@
-class LazyLoader {
+class PostManager {
     constructor() {
-        this.observer = null;
         this.posts = [];
         this.loadedPosts = 0;
         this.postsPerLoad = 3;
         this.isLoading = false;
         this.imageCache = new Map();
+        this.failedImages = new Set(); // Track failed images
         this.init();
     }
 
     init() {
         this.setupIntersectionObserver();
         this.loadInitialPosts();
+        this.setupEventListeners();
         this.preloadCriticalImages();
     }
 
     setupIntersectionObserver() {
         this.observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
-                if (entry.isIntersecting) {
+                if (entry.isIntersecting && !this.isLoading) {
                     this.loadMorePosts();
                 }
             });
@@ -33,39 +34,90 @@ class LazyLoader {
         }
     }
 
-    preloadCriticalImages() {
-        // Preload first few images for better UX
-        const criticalImages = this.posts.slice(0, 3).map(post => post.image);
-        criticalImages.forEach(src => {
-            this.cacheImage(src);
+    setupEventListeners() {
+        // Header scroll effect
+        window.addEventListener('scroll', () => {
+            const headerName = document.querySelector('.header-name');
+            const heroSection = document.querySelector('.hero-section');
+            const heroHeight = heroSection.offsetHeight;
+
+            if (window.scrollY > heroHeight * 0.6) {
+                headerName.classList.add('visible');
+            } else {
+                headerName.classList.remove('visible');
+            }
         });
+
+        // Fullscreen post view event listeners
+        const postFullscreenBack = document.getElementById('post-fullscreen-back');
+        postFullscreenBack.addEventListener('click', () => this.closePostFullscreen());
+
+        // Handle browser back button
+        window.addEventListener('popstate', (event) => {
+            if (event.state && event.state.postId) {
+                this.openPostFullscreen(event.state.postId);
+            } else {
+                this.closePostFullscreen();
+            }
+        });
+
+        // Check if URL contains a post parameter
+        this.checkUrlForPost();
     }
 
-    async cacheImage(src) {
-        if (this.imageCache.has(src)) {
-            return this.imageCache.get(src);
+    preloadCriticalImages() {
+        // Only preload hero image for now
+        const heroImage = document.querySelector('.hero-image');
+        if (heroImage) {
+            this.cacheImage(heroImage.src).catch(() => {
+                console.warn('Failed to preload hero image');
+            });
         }
+    }
 
+    cacheImage(src) {
         return new Promise((resolve, reject) => {
+            // Skip if this image has already failed
+            if (this.failedImages.has(src)) {
+                reject(new Error('Image previously failed to load'));
+                return;
+            }
+
+            // Return cached image if available
+            if (this.imageCache.has(src)) {
+                resolve(this.imageCache.get(src));
+                return;
+            }
+
             const img = new Image();
+            
+            // Set timeout for image loading
+            const timeout = setTimeout(() => {
+                this.failedImages.add(src);
+                reject(new Error('Image loading timeout'));
+            }, 10000); // 10 second timeout
+
             img.onload = () => {
+                clearTimeout(timeout);
                 this.imageCache.set(src, img);
                 resolve(img);
             };
-            img.onerror = reject;
-            img.src = src;
             
-            // Set cache control for future requests
-            if (src.startsWith('http')) {
-                img.setAttribute('loading', 'lazy');
-            }
+            img.onerror = (error) => {
+                clearTimeout(timeout);
+                this.failedImages.add(src);
+                console.warn(`Failed to load image: ${src}`, error);
+                reject(error);
+            };
+            
+            img.src = src;
         });
     }
 
     loadInitialPosts() {
         this.showSkeletonLoaders();
-
-        // Load initial posts with cached images
+        
+        // Simulate loading delay for better UX
         setTimeout(() => {
             this.loadPosts(0, this.postsPerLoad);
         }, 800);
@@ -76,27 +128,32 @@ class LazyLoader {
         postsContainer.innerHTML = '';
 
         for (let i = 0; i < this.postsPerLoad; i++) {
-            const skeletonCard = document.createElement('div');
-            skeletonCard.className = 'post-card skeleton-card';
-            skeletonCard.innerHTML = `
-                <div class="post-image-container">
-                    <div class="skeleton skeleton-image"></div>
-                </div>
-                <div class="post-content">
-                    <div class="skeleton skeleton-text" style="width: 80%"></div>
-                    <div class="skeleton skeleton-text" style="width: 100%"></div>
-                    <div class="skeleton skeleton-text" style="width: 60%"></div>
-                    <div class="post-meta">
-                        <div class="skeleton skeleton-text" style="width: 40%"></div>
-                        <div class="skeleton skeleton-text" style="width: 20%"></div>
-                    </div>
-                </div>
-            `;
+            const skeletonCard = this.createSkeletonCard();
             postsContainer.appendChild(skeletonCard);
         }
     }
 
-    async loadPosts(startIndex, count) {
+    createSkeletonCard() {
+        const skeletonCard = document.createElement('div');
+        skeletonCard.className = 'post-card skeleton-card';
+        skeletonCard.innerHTML = `
+            <div class="post-image-container">
+                <div class="skeleton skeleton-image"></div>
+            </div>
+            <div class="post-content">
+                <div class="skeleton skeleton-text" style="width: 80%"></div>
+                <div class="skeleton skeleton-text" style="width: 100%"></div>
+                <div class="skeleton skeleton-text" style="width: 60%"></div>
+                <div class="post-meta">
+                    <div class="skeleton skeleton-text" style="width: 40%"></div>
+                    <div class="skeleton skeleton-text" style="width: 20%"></div>
+                </div>
+            </div>
+        `;
+        return skeletonCard;
+    }
+
+    loadPosts(startIndex, count) {
         if (this.isLoading) return;
 
         this.isLoading = true;
@@ -106,64 +163,71 @@ class LazyLoader {
         const skeletonCards = postsContainer.querySelectorAll('.skeleton-card');
         skeletonCards.forEach(card => card.remove());
 
-        // Show loading indicator with skeleton
+        // Show loading indicator
         const loadingMore = document.getElementById('loading-more');
         loadingMore.style.display = 'flex';
-        loadingMore.innerHTML = `
-            <div class="loading-skeleton">
-                <div class="skeleton skeleton-text" style="width: 60%"></div>
-                <div class="skeleton skeleton-text" style="width: 40%"></div>
-            </div>
-        `;
 
-        try {
-            const postsToLoad = this.posts.slice(startIndex, startIndex + count);
-            
-            // Preload images for this batch
-            await this.preloadImageBatch(postsToLoad);
+        // Load posts with error handling
+        this.loadPostsWithFallback(startIndex, count)
+            .finally(() => {
+                this.isLoading = false;
 
-            // Create and append post cards with cached images
-            postsToLoad.forEach((post, index) => {
-                const postCard = this.createPostCard(post, startIndex + index);
-                postsContainer.appendChild(postCard);
-
-                // Add staggered animation
-                setTimeout(() => {
-                    postCard.style.animationDelay = `${index * 0.1}s`;
-                    postCard.classList.add('physics-card');
-                }, 50);
-            });
-
-            this.loadedPosts += postsToLoad.length;
-            this.isLoading = false;
-
-            // Hide loading indicator if all posts are loaded
-            if (this.loadedPosts >= this.posts.length) {
-                loadingMore.style.display = 'none';
-                if (this.observer) {
-                    this.observer.unobserve(loadingMore);
+                // Hide loading indicator if all posts are loaded
+                if (this.loadedPosts >= this.posts.length) {
+                    loadingMore.style.display = 'none';
+                    if (this.observer) {
+                        this.observer.unobserve(loadingMore);
+                    }
                 }
-            } else {
-                // Reset loading indicator for next load
-                loadingMore.innerHTML = `
-                    <div class="loading-dots">
-                        <div class="dot"></div>
-                        <div class="dot"></div>
-                        <div class="dot"></div>
-                    </div>
-                    <span>Loading more posts...</span>
-                `;
+            });
+    }
+
+    async loadPostsWithFallback(startIndex, count) {
+        const postsToLoad = this.posts.slice(startIndex, startIndex + count);
+        const postsContainer = document.getElementById('posts-container');
+
+        // Create and append post cards immediately, even if images fail
+        postsToLoad.forEach((post, index) => {
+            const postCard = this.createPostCard(post, startIndex + index);
+            postsContainer.appendChild(postCard);
+
+            // Add staggered animation
+            setTimeout(() => {
+                postCard.style.animationDelay = `${index * 0.1}s`;
+                postCard.classList.add('physics-card');
+            }, 50);
+
+            // Try to load image in background
+            this.loadImageForPost(post).catch(() => {
+                // Image loading failed, but post is already displayed
+                console.warn(`Failed to load image for post: ${post.title}`);
+            });
+        });
+
+        this.loadedPosts += postsToLoad.length;
+    }
+
+    async loadImageForPost(post) {
+        try {
+            await this.cacheImage(post.image);
+            // Update the image in the post card if it exists
+            const postCard = document.querySelector(`.post-card[data-id="${post.id}"]`);
+            if (postCard) {
+                const img = postCard.querySelector('.post-image');
+                if (img && img.src !== post.image) {
+                    img.src = post.image;
+                }
             }
         } catch (error) {
-            console.error('Error loading posts:', error);
-            this.isLoading = false;
-            loadingMore.innerHTML = '<span>Error loading posts. Please try again.</span>';
+            // Image loading failed, but we don't break the post loading
+            console.warn(`Failed to load image for post ${post.id}:`, error);
         }
     }
 
-    async preloadImageBatch(posts) {
-        const preloadPromises = posts.map(post => this.cacheImage(post.image));
-        await Promise.all(preloadPromises);
+    loadMorePosts() {
+        if (this.loadedPosts < this.posts.length && !this.isLoading) {
+            this.loadPosts(this.loadedPosts, this.postsPerLoad);
+        }
     }
 
     createPostCard(post, index) {
@@ -175,10 +239,13 @@ class LazyLoader {
         // Truncate content for preview
         const previewContent = post.content.substring(0, 200) + '...';
 
+        // Check if image is already cached
+        const hasCachedImage = this.imageCache.has(post.image);
+        const imageSrc = hasCachedImage ? post.image : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjZjhmYWY5Ii8+CjxwYXRoIGQ9Ik0xMjAgMTIwSDE0MFYxNDBIMTIwVjEyMFpNMTYwIDEyMEgxODBWMTQwSDE2MFYxMjBaTTIwMCAxMjBIMjIwVjE0MEgyMDBWMTIwWk0xMjAgMTYwSDE0MFYxODBIMTIwVjE2MFpNMTYwIDE2MEgxODBWMTgwSDE2MFYxNjBaTTIwMCAxNjBIMjIwVjE4MEgyMDBWMTYwWk0xMjAgMjAwSDE0MFYyMjBIMTIwVjIwMFpNMTYwIDIwMEgxODBWMjIwSDE2MFYyMDBaTTIwMCAyMDBIMjIwVjIyMEgyMDBWMjAwWiIgZmlsbD0iI2U0ZTllNyIvPgo8L3N2Zz4K';
+
         postCard.innerHTML = `
             <div class="post-image-container">
-                <div class="image-skeleton skeleton-image"></div>
-                <img src="${post.image}" alt="${post.title}" class="post-image" loading="lazy" style="opacity: 0; transition: opacity 0.3s ease-in-out;">
+                <img src="${imageSrc}" alt="${post.title}" class="post-image" loading="lazy" data-src="${post.image}">
             </div>
             <div class="post-content">
                 <h3 class="post-title">${post.title}</h3>
@@ -197,11 +264,9 @@ class LazyLoader {
             </div>
         `;
 
-        // Load image with fade-in effect
-        this.loadImageWithSkeleton(postCard, post.image);
-
         // Add click event to entire card for opening fullscreen
         postCard.addEventListener('click', (e) => {
+            // Don't trigger if clicking the read more or share buttons
             if (!e.target.closest('.read-more-btn') && !e.target.closest('.share-btn')) {
                 this.openPostFullscreen(post.id);
             }
@@ -224,30 +289,6 @@ class LazyLoader {
         return postCard;
     }
 
-    async loadImageWithSkeleton(postCard, imageSrc) {
-        const img = postCard.querySelector('.post-image');
-        const skeleton = postCard.querySelector('.image-skeleton');
-
-        try {
-            // Use cached image if available
-            if (this.imageCache.has(imageSrc)) {
-                const cachedImg = this.imageCache.get(imageSrc);
-                img.src = cachedImg.src;
-                img.style.opacity = '1';
-                skeleton.style.display = 'none';
-            } else {
-                // Load and cache image
-                await this.cacheImage(imageSrc);
-                img.style.opacity = '1';
-                skeleton.style.display = 'none';
-            }
-        } catch (error) {
-            console.error('Error loading image:', error);
-            skeleton.style.display = 'none';
-            img.style.opacity = '1'; // Still show image even if cache fails
-        }
-    }
-
     openPostFullscreen(postId) {
         const post = this.posts.find(p => p.id === postId);
         if (!post) return;
@@ -263,25 +304,24 @@ class LazyLoader {
         const postFullscreenDate = document.getElementById('post-fullscreen-date');
         const postFullscreenText = document.getElementById('post-fullscreen-text');
 
-        // Show skeleton while loading fullscreen content
-        postFullscreenImage.style.opacity = '0';
-        postFullscreenTitle.textContent = '';
-        postFullscreenDate.textContent = '';
-        postFullscreenText.innerHTML = '';
-
-        // Load fullscreen image with caching
-        this.cacheImage(post.image).then(() => {
-            postFullscreenImage.src = post.image;
-            postFullscreenImage.alt = post.title;
-            postFullscreenImage.style.opacity = '1';
-        });
-
+        // Set fallback image first
+        postFullscreenImage.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjZjhmYWY5Ii8+CjxwYXRoIGQ9Ik0xMjAgMTIwSDE0MFYxNDBIMTIwVjEyMFpNMTYwIDEyMEgxODBWMTQwSDE2MFYxMjBaTTIwMCAxMjBIMjIwVjE0MEgyMDBWMTIwWk0xMjAgMTYwSDE0MFYxODBIMTIwVjE2MFpNMTYwIDE2MEgxODBWMTgwSDE2MFYxNjBaTTIwMCAxNjBIMjIwVjE4MEgyMDBWMTYwWk0xMjAgMjAwSDE0MFYyMjBIMTIwVjIwMFpNMTYwIDIwMEgxODBWMjIwSDE2MFYyMDBaTTIwMCAyMDBIMjIwVjIyMEgyMDBWMjAwWiIgZmlsbD0iI2U0ZTllNyIvPgo8L3N2Zz4K';
+        postFullscreenImage.alt = post.title;
         postFullscreenTitle.textContent = post.title;
         postFullscreenDate.textContent = post.date;
         postFullscreenText.innerHTML = post.content;
 
         postFullscreen.classList.add('active');
         document.body.style.overflow = 'hidden';
+
+        // Try to load the actual image
+        this.cacheImage(post.image)
+            .then(() => {
+                postFullscreenImage.src = post.image;
+            })
+            .catch(() => {
+                console.warn(`Failed to load image for fullscreen view: ${post.image}`);
+            });
 
         // Set current post ID for sharing
         this.currentPostId = postId;
@@ -307,6 +347,7 @@ class LazyLoader {
         const post = this.posts.find(p => p.id === postId);
         if (!post) return;
 
+        // Create a shareable URL
         const shareUrl = `${window.location.origin}${window.location.pathname}?post=${postId}`;
 
         if (navigator.share) {
@@ -317,9 +358,19 @@ class LazyLoader {
                 })
                 .catch(error => console.log('Error sharing:', error));
         } else {
+            // Fallback for browsers that don't support the Web Share API
             navigator.clipboard.writeText(shareUrl)
                 .then(() => alert('Post link copied to clipboard!'))
                 .catch(err => console.error('Failed to copy: ', err));
+        }
+    }
+
+    checkUrlForPost() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const postId = urlParams.get('post');
+
+        if (postId) {
+            this.openPostFullscreen(parseInt(postId));
         }
     }
 
@@ -331,14 +382,15 @@ class LazyLoader {
 // Initialize the application
 document.addEventListener('DOMContentLoaded', () => {
     // Sample posts data
-    const posts = [{
+    const posts = [
+        {
             id: 1,
             title: "𝗝𝘂𝗱𝗴𝗲𝗺𝗲𝗻𝘁 𝗪𝗵𝗲𝗿𝗲 𝗜 𝗕𝗲𝗴𝗮𝗻 𝘁𝗼 𝗖𝗵𝗮𝗻𝗴𝗲",
-            image: "post/Judgment Where I Began to Change.png",
+            image: "https://eldrex.landecs.org/post/Judgment%20Where%20I%20Began%20to%20Change.png",
             date: "October 11, 2025",
             content: `
                 <p>There was a time in my life when I usually compared myself to others. I looked at their talents, their confidence, and their achievements, and I began to doubt my own worth. I started to believe the words of people who told me I was not 𝒈𝒐𝒐𝒅 𝒆𝒏𝒐𝒖𝒈𝒉, that I was 𝒔𝒕𝒖𝒑𝒊𝒅, and 𝒆𝒗𝒆𝒏 𝒖𝒈𝒍𝒚. Those words stayed in my mind, and they made me question who I really was.</p>
-                <p>But one day, I asked myself, 𝘸𝘩𝘺 𝘴𝘩𝘰𝘶𝘭𝘥 𝘐 𝘧𝘰𝘭𝘭𝘰𝘸 𝘵𝘩𝘦𝘪𝘳 𝘰𝘱𝘪𝘯𝘪𝘰𝘯𝘴 𝘪𝘯𝘴𝘵𝘦𝘢𝘥 𝘰𝘧 𝘧𝘰𝘭𝘭𝘰𝘸𝘪𝘯𝘨 𝘮𝘺𝘴𝘦𝘭𝘧? 𝘸𝘩𝘺 𝘴𝘩𝘰𝘶𝘭𝘥 𝘐 𝘭𝘪𝘷𝘦 𝘶𝘯𝘥𝘦𝘳 𝘵𝘩𝘦 𝘴𝘩𝘢𝘥𝘰𝘸𝘴 𝘰𝘧 𝘤𝘰𝘮𝘱𝘢𝘳𝘪𝘴𝘰𝘯 𝘸𝘩𝘦𝘯 𝘐 𝘤𝘢𝘯 𝘣𝘶𝘪𝘭𝘥 𝘮𝘺 𝘰𝘸𝘯 𝘭𝘪𝘨𝘩𝘵? That was the moment everything changed. I decided to stop comparing, to stop listening to negativity, and to focus on what I could do. I promised myself to move step by step, even if my progress was slow.</p>
+                <p>But one day, I asked myself, 𝘸𝘩𝘺 𝘴𝘩𝘰𝘶𝘭𝘥 𝘐 𝘧𝘰𝘭𝘭𝘰𝘸 𝘵𝘩𝘦𝘪𝘳 𝘰𝘱𝘪𝘯𝘪𝘰𝘯𝘴 𝘪𝘯𝘴𝘵𝘦𝘢𝘥 𝘰𝘧 𝘧𝘰𝘭𝘭𝘰𝘸𝘪𝘯𝘴 𝘮𝘺𝘴𝘦𝘭𝘧? 𝘸𝘩𝘺 𝘴𝘩𝘰𝘶𝘭𝘥 𝘐 𝘭𝘪𝘷𝘦 𝘶𝘯𝘥𝘦𝘳 𝘵𝘩𝘦 𝘴𝘩𝘢𝘥𝘰𝘸𝘴 𝘰𝘧 𝘤𝘰𝘮𝘱𝘢𝘳𝘪𝘴𝘰𝘯 𝘸𝘩𝘦𝘯 𝘐 𝘤𝘢𝘯 𝘣𝘶𝘪𝘭𝘥 𝘮𝘺 𝘰𝘸𝘯 𝘭𝘪𝘨𝘩𝘵? That was the moment everything changed. I decided to stop comparing, to stop listening to negativity, and to focus on what I could do. I promised myself to move step by step, even if my progress was slow.</p>
                 <p>That was when my 2023 mantra was born...."𝑺𝒕𝒊𝒍𝒍 𝒃𝒆 𝒕𝒉𝒆 𝑩𝒍𝒖𝒆." It meant staying true to who I am, calm but strong, peaceful but determined. I started to raise my hand more in class, to speak with confidence, and to believe that I also have the ability to achieve great things. I stopped chasing what others had and began appreciating what I could create on my own. Slowly, I became closer to what others once called 𝘨𝘦𝘯𝘪𝘶𝘴, not because I wanted to prove them wrong, but because I finally believed in myself.</p>
                 <p>I am 𝒕𝒉𝒂𝒏𝒌𝒇𝒖𝒍 for the people 𝘸𝘩𝘰 𝘫𝘶𝘥𝘨𝘦 𝘮𝘦, the 𝘰𝘯𝘦𝘴 𝘸𝘩𝘰 𝘵𝘳𝘪𝘦𝘥 𝘵𝘰 𝘣𝘳𝘦𝘢𝘬 𝘮𝘦, and even 𝘵𝘩𝘰𝘴𝘦 𝘸𝘩𝘰 𝘨𝘶𝘪𝘥𝘦𝘥 𝘮𝘦 when I was lost. At first, I felt 𝘱𝘢𝘪𝘯 and 𝘢𝘯𝘨𝘦𝘳. But now, I understand that they were part of my growth. They helped me see the strength that I never knew I had. Their criticism became my motivation, and their doubts became my reason to rise.</p>
                 <p>Because of that experience, I promised myself something important: 𝘐 𝘸𝘪𝘭𝘭 𝘯𝘦𝘷𝘦𝘳 𝘮𝘢𝘬𝘦 𝘰𝘵𝘩𝘦𝘳𝘴 𝘧𝘦𝘦𝘭 𝘵𝘩𝘦 𝘸𝘢𝘺 𝘐 𝘰𝘯𝘤𝘦 𝘥𝘪𝘥. I know how painful it is to feel small, to feel like your voice does not matter. I know how deeply it can hurt someone's mind and heart. That is why I choose to lead with kindness and empathy, to lift others instead of tearing them down.</p>
@@ -351,10 +403,10 @@ document.addEventListener('DOMContentLoaded', () => {
         {
             id: 2,
             title: "𝐖𝐨𝐫𝐭𝐡 𝐚 𝐓𝐡𝐨𝐮𝐬𝐚𝐧𝐝",
-            image: "post/worth a thousand.png",
+            image: "https://eldrex.landecs.org/post/worth%20a%20thousand.png",
             date: "October 12, 2025",
             content: `
-                <p>When I was a child, I once asked my mother, "𝐍𝐚𝐧𝐚𝐲, 𝐡𝐨𝐰 𝐡𝐚𝐫𝐝 𝐢𝐬 𝐢𝐭 𝐭𝐨 𝐞𝐚𝐫𝐧 𝐦𝐨𝐧𝐞𝐲?" She smiled, though I could see the sadness in her eyes. "𝐀𝐧𝐚𝐤, 𝐢𝐭'𝐬 𝐯𝐞𝐫𝐲 𝐡𝐚𝐫𝐝," she said. "𝐄𝐬𝐩𝐞𝐜𝐢𝐚𝐥𝐥𝐲 𝐟𝐨𝐫 𝐩𝐞𝐨𝐩𝐥𝐞 𝐥𝐢𝐤𝐞 𝐮𝐬 𝐰𝐡𝐨 𝐰𝐨𝐫𝐤 𝐚𝐬 𝐟𝐚𝐫𝐦𝐞𝐫𝐬." My father was nearby, busy preparing coconuts in the forest for copra. I watched him silently, wondering 𝑤ℎ𝑦 𝑖𝑡 𝑤𝑎𝑠 𝑠𝑜 ℎ𝑎𝑟𝑑 𝑤ℎ𝑒𝑛 𝑎𝑙𝑙 𝑤𝑒 𝑑𝑖𝑑 𝑤𝑎𝑠 𝑤𝑜𝑟𝑘.</p>
+                <p>When I was a child, I once asked my mother, "𝐍𝐚𝐧𝐚𝐲, 𝐡𝐨𝐰 𝐡𝐚𝐫𝐝 𝐢𝐭 𝐭𝐨 𝐞𝐚𝐫𝐧 𝐦𝐨𝐧𝐞𝐲?" She smiled, though I could see the sadness in her eyes. "𝐀𝐧𝐚𝐤, 𝐢𝐭'𝐬 𝐯𝐞𝐫𝐲 𝐡𝐚𝐫𝐝," she said. "𝐄𝐬𝐩𝐞𝐜𝐢𝐚𝐥𝐥𝐲 𝐟𝐨𝐫 𝐩𝐞𝐨𝐩𝐥𝐞 𝐥𝐢𝐤𝐞 𝐮𝐬 𝐰𝐡𝐨 𝐰𝐨𝐫𝐤 𝐚𝐬 𝐟𝐚𝐫𝐦𝐞𝐫𝐬." My father was nearby, busy preparing coconuts in the forest for copra. I watched him silently, wondering 𝑤ℎ𝑦 𝑖𝑡 𝑤𝑎𝑠 𝑠𝑜 ℎ𝑎𝑟𝑑 𝑤ℎ𝑒𝑛 𝑎𝑙𝑙 𝑤𝑒 𝑑𝑖𝑑 𝑤𝑎𝑠 𝑤𝑜𝑟𝑘.</p>
                 <p>At that age, I did not truly understand the meaning of 𝒉𝒂𝒓𝒅𝒔𝒉𝒊𝒑. For me, planting rice, vegetables, and corn felt enjoyable. The smell of fresh soil and the sound of water flowing in the field gave me peace. My mother once told me, "𝐘𝐨𝐮 𝐞𝐧𝐣𝐨𝐲 𝐢𝐭 𝐛𝐞𝐜𝐚𝐮𝐬𝐞 𝐲𝐨𝐮 𝐥𝐨𝐯𝐞 𝐰𝐡𝐚𝐭 𝐲𝐨𝐮 𝐝𝐨." I did not say anything, but deep inside, I knew she was right. I never complained to my parents, even if life was hard.</p>
                 <p>Years passed, and one day, while I was studying in the city, my Lola's younger sister, whom I call 𝘕𝘢𝘯𝘢𝘺 𝘐𝘥𝘢𝘺, offered me a job. She asked if I wanted to work for her while studying. I agreed without hesitation. I wanted to know what it truly meant to earn money. She promised to give me 𝗈𝗇𝖾 𝗍𝗁𝗈𝗎𝗌𝖺𝗇𝖽 𝗉𝖾𝗌𝗈𝗌 a month for helping her with her household chores and her electronic shop.</p>
                 <p>At first, I thought it would be easy, but I was wrong. I started as a cleaner and helper, arranging items, wiping shelves, and assisting customers. Later, I became a stock recorder, a cashier, a salesboy, and sometimes even manpower for carrying heavy items. 𝑰 𝒅𝒊𝒅 𝒂𝒍𝒎𝒐𝒔𝒕 𝒆𝒗𝒆𝒓𝒚𝒕𝒉𝒊𝒏𝒈 𝒔𝒉𝒆 𝒏𝒆𝒆𝒅𝒆𝒅. 𝑩𝒖𝒕 𝒘𝒉𝒂𝒕 𝒉𝒖𝒓𝒕 𝒎𝒆 𝒎𝒐𝒔𝒕 𝒘𝒂𝒔 𝒉𝒐𝒘 𝒔𝒉𝒆 𝒕𝒓𝒆𝒂𝒕𝒆𝒅 𝒎𝒆... 𝒏𝒐𝒕 𝒍𝒊𝒌𝒆 𝒉𝒆𝒓 𝒐𝒘𝒏 𝒈𝒓𝒂𝒏𝒅𝒄𝒉𝒊𝒍𝒅, 𝒃𝒖𝒕 𝒍𝒊𝒌𝒆 𝒂𝒏 𝒐𝒓𝒅𝒊𝒏𝒂𝒓𝒚 𝒘𝒐𝒓𝒌𝒆𝒓.</p>
@@ -374,14 +426,14 @@ document.addEventListener('DOMContentLoaded', () => {
         {
             id: 3,
             title: "𝐁𝐞𝐥𝐢𝐞𝐟 𝐖𝐞 𝐁𝐞𝐥𝐢𝐞𝐯𝐞",
-            image: "post/belief we believe.png", 
+            image: "https://eldrex.landecs.org/post/belief%20we%20believe.png", 
             date: "October 13, 2025",
             content: `
                 <p>When I was a child, I once asked a man a question that stayed with me for years: "𝐖𝐡𝐲 𝐚𝐫𝐞 𝐰𝐞 𝐚𝐥𝐰𝐚𝐲𝐬 𝐩𝐨𝐨𝐫, 𝐞𝐯𝐞𝐧 𝐰𝐡𝐞𝐧 𝐰𝐞 𝐫𝐞𝐚𝐥𝐥𝐲 𝐰𝐚𝐧𝐭 𝐭𝐨 𝐛𝐞 𝐫𝐢𝐜𝐡?"</p>
                 <p>The man looked at me and said, "𝑩𝒆𝒄𝒂𝒖𝒔𝒆 𝒐𝒖𝒓 𝒈𝒆𝒏𝒆𝒓𝒂𝒕𝒊𝒐𝒏 𝒊𝒔 𝒑𝒐𝒐𝒓, 𝒘𝒆 𝒄𝒂𝒏𝒏𝒐𝒕 𝒃𝒆 𝒓𝒊𝒄𝒉 𝒖𝒏𝒍𝒆𝒔𝒔 𝒘𝒆 𝒆𝒏𝒕𝒆𝒓 𝐩𝐨𝐥𝐢𝐭𝐢𝐜𝐬."</p>
                 <p>That answer confused me, but it also made me think deeply. I carried those words in my mind like a shadow following me wherever I go. As I grew older, I started to hear the same kind of message from people around me. 𝘛𝘩𝘦𝘺 𝘸𝘰𝘶𝘭𝘥 𝘴𝘢𝘺 𝘵𝘩𝘢𝘵 𝘣𝘦𝘪𝘯𝘨 𝘣𝘰𝘳𝘯 𝘱𝘰𝘰𝘳 𝘮𝘦𝘢𝘯𝘴 𝘴𝘵𝘢𝘺𝘪𝘯𝘨 𝘱𝘰𝘰𝘳 𝘧𝘰𝘳𝘦𝘷𝘦𝘳. Every time I heard those words, a small voice inside me whispered, "𝑰𝒔 𝒕𝒉𝒂𝒕 𝒓𝒆𝒂𝒍𝒍𝒚 𝒕𝒓𝒖𝒆?"</p>
                 <p>I began to question the belief that poverty decides who we become. I realized that what keeps us in the same place is not always money, but our way of thinking. 𝑺𝒐𝒎𝒆 𝒑𝒆𝒐𝒑𝒍𝒆 𝒅𝒓𝒆𝒂𝒎 𝒐𝒇 𝒔𝒖𝒄𝒄𝒆𝒔𝒔 𝒃𝒖𝒕 𝒅𝒐 𝒏𝒐𝒕𝒉𝒊𝒏𝒈 𝒕𝒐 𝒓𝒆𝒂𝒄𝒉 𝒊𝒕. 𝑻𝒉𝒆𝒚 𝒘𝒂𝒊𝒕 𝒇𝒐𝒓 𝒍𝒖𝒄𝒌 𝒕𝒐 𝒌𝒏𝒐𝒄𝒌 𝒐𝒏 𝒕𝒉𝒆𝒊𝒓 𝒅𝒐𝒐𝒓𝒔, 𝒉𝒐𝒑𝒊𝒏𝒈 𝒇𝒐𝒓 𝒎𝒊𝒓𝒂𝒄𝒍𝒆𝒔 𝒕𝒉𝒂𝒕 𝒏𝒆𝒗𝒆𝒓 𝒄𝒐𝒎𝒆. I once believed that too, until I understood that 𝘯𝘰 𝘴𝘵𝘢𝘳 𝘸𝘪𝘭𝘭 𝘧𝘢𝘭𝘭 𝘧𝘳𝘰𝘮 𝘵𝘩𝘦 𝘴𝘬𝘺 𝘵𝘰 𝘨𝘳𝘢𝘯𝘵 𝘰𝘶𝘳 𝘸𝘪𝘴𝘩𝘦𝘴. 𝘛𝘩𝘦 𝘵𝘳𝘶𝘵𝘩 𝘪𝘴, 𝘥𝘳𝘦𝘢𝘮𝘴 𝘰𝘯𝘭𝘺 𝘣𝘦𝘤𝘰𝘮𝘦 𝘳𝘦𝘢𝘭 𝘸𝘩𝘦𝘯 𝘸𝘦 𝘸𝘢𝘬𝘦 𝘶𝘱 𝘢𝘯𝘥 𝘴𝘵𝘢𝘳𝘵 𝘸𝘰𝘳𝘬𝘪𝘯𝘨 𝘧𝘰𝘳 𝘵𝘩𝘦𝘮.</p>
-                <p>There was a time when 𝑰 𝒖𝒔𝒆𝒅 𝒕𝒐 𝒔𝒊𝒕 𝒂𝒕 𝒏𝒊𝒈𝒉𝒕, 𝒔𝒕𝒂𝒓𝒊𝒏𝒈 𝒂𝒕 𝒕𝒉𝒆 𝒄𝒆𝒊𝒍𝒍𝒊𝒏𝒈, 𝒊𝒎𝒂𝒈𝒊𝒏𝒊𝒏𝒈 𝒂 𝒃𝒆𝒕𝒕𝒆𝒓 𝒍𝒊𝒇𝒆. 𝑰 𝒘𝒐𝒖𝒍𝒅 𝒕𝒉𝒊𝒏𝒌 𝒐𝒇 𝒃𝒆𝒂𝒖𝒕𝒊𝒇𝒖𝒍 𝒕𝒉𝒊𝒏𝒈𝒔 𝑰 𝒘𝒂𝒏𝒕𝒆𝒅 𝒕𝒐 𝒂𝒄𝒉𝒊𝒆𝒗𝒆, 𝒃𝒖𝒕 𝒕𝒉𝒆 𝒏𝒆�𝒕 𝒅𝒂𝒚, 𝑰 𝒅𝒊𝒅 𝒏𝒐𝒕𝒉𝒊𝒏𝒈 𝒂𝒃𝒐𝒖𝒕 𝒕𝒉𝒆𝒎. I realized I was one of those people who only wish, but never move. Then one day, something inside me changed. I told myself, "𝐈𝐟 𝐧𝐨 𝐨𝐧𝐞 𝐰𝐢𝐥𝐥 𝐬𝐭𝐚𝐫𝐭 𝐭𝐡𝐞 𝐜𝐡𝐚𝐧𝐠𝐞, 𝐈 𝐰𝐢𝐥𝐥."</p>
+                <p>There was a time when 𝑰 𝒖𝒔𝒆𝒅 𝒕𝒐 𝒔𝒊𝒕 𝒂𝒕 𝒏𝒊𝒈𝒉𝒕, 𝒔𝒕𝒂𝒓𝒊𝒏𝒈 𝒂𝒕 𝒕𝒉𝒆 𝒄𝒆𝒊𝒍𝒍𝒊𝒏𝒈, 𝒊𝒎𝒂𝒈𝒊𝒏𝒊𝒏𝒈 𝒂 𝒃𝒆𝒕𝒕𝒆𝒓 𝒍𝒊𝒇𝒆. 𝑰 𝒘𝒐𝒖𝒍𝒅 𝒕𝒉𝒊𝒏𝒌 𝒐𝒇 𝒃𝒆𝒂𝒖𝒕𝒊𝒇𝒖𝒍 𝒕𝒉𝒊𝒏𝒈𝒔 𝑰 𝒘𝒂𝒏𝒕𝒆𝒅 𝒕𝒐 𝒂𝒄𝒉𝒊𝒆𝒗𝒆, 𝒃𝒖𝒕 𝒕𝒉𝒆 𝒏𝒆𝒙𝒕 𝒅𝒂𝒚, 𝑰 𝒅𝒊𝒅 𝒏𝒐𝒕𝒉𝒊𝒏𝒈 𝒂𝒃𝒐𝒖𝒕 𝒕𝒉𝒆𝒎. I realized I was one of those people who only wish, but never move. Then one day, something inside me changed. I told myself, "𝐈𝐟 𝐧𝐨 𝐨𝐧𝐞 𝐰𝐢𝐥𝐥 𝐬𝐭𝐚𝐫𝐭 𝐭𝐡𝐞 𝐜𝐡𝐚𝐧𝐠𝐞, 𝐈 𝐰𝐢𝐥𝐥."</p>
                 <p>That's when I began to act differently. I work & studied harder, became more curious, and learned that success is not given to you, it is 𝒃𝒖𝒊𝒍𝒕 𝒃𝒚 𝒚𝒐𝒖. I learned that 𝒃𝒆𝒊𝒏𝒈 𝒃𝒐𝒓𝒏 𝒑𝒐𝒐𝒓 𝒊𝒔 𝒏𝒐𝒕 𝒂 𝒄𝒖𝒓𝒔𝒆, 𝒊𝒕 𝒊𝒔 𝒂 𝒄𝒉𝒂𝒍𝒍𝒆𝒏𝒈𝒆... 𝒂 𝒕𝒆𝒔𝒕 𝒐𝒇 𝒉𝒐𝒘 𝒇𝒂𝒓 𝒘𝒆 𝒄𝒂𝒏 𝒈𝒐 𝒘𝒊𝒕𝒉 𝒘𝒉𝒂𝒕 𝒍𝒊𝒕𝒕𝒍𝒆 𝒘𝒆 𝒉𝒂𝒗𝒆. Poverty may be our starting point, but it does not have to be our ending.</p>
                 <p>Now, when I think back to what that man told me, I no longer feel sad. I feel inspired. His words were not meant to stop me; they were meant to wake me up. They taught me that 𝒃𝒆𝒍𝒊𝒆𝒇 𝒊𝒔 𝒑𝒐𝒘𝒆𝒓𝒇𝒖𝒍, 𝒃𝒖𝒕 𝒐𝒏𝒍𝒚 𝒘𝒉𝒆𝒏 𝒊𝒕 𝒑𝒖𝒔𝒉𝒆𝒔 𝒚𝒐𝒖 𝒇𝒐𝒓𝒘𝒂𝒓𝒅, 𝒏𝒐𝒕 𝒘𝒉𝒆𝒏 𝒊𝒕 𝒌𝒆𝒆𝒑𝒔 𝒚𝒐𝒖 𝒔𝒕𝒊𝒍𝒍.</p>
                 <p>As I continue my journey, I remind myself of one thing I learned from this experience:</p>
@@ -420,45 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     ];
 
-    // Initialize lazy loader
-    const lazyLoader = new LazyLoader();
-    lazyLoader.setPosts(posts);
-
-    // Header scroll effect
-    window.addEventListener('scroll', function() {
-        const headerName = document.querySelector('.header-name');
-        const heroSection = document.querySelector('.hero-section');
-        const heroHeight = heroSection.offsetHeight;
-
-        if (window.scrollY > heroHeight * 0.6) {
-            headerName.classList.add('visible');
-        } else {
-            headerName.classList.remove('visible');
-        }
-    });
-
-    // Fullscreen post view event listeners
-    const postFullscreenBack = document.getElementById('post-fullscreen-back');
-    postFullscreenBack.addEventListener('click', () => lazyLoader.closePostFullscreen());
-
-    // Handle browser back button
-    window.addEventListener('popstate', function(event) {
-        if (event.state && event.state.postId) {
-            lazyLoader.openPostFullscreen(event.state.postId);
-        } else {
-            lazyLoader.closePostFullscreen();
-        }
-    });
-
-    // Check if URL contains a post parameter
-    function checkUrlForPost() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const postId = urlParams.get('post');
-
-        if (postId) {
-            lazyLoader.openPostFullscreen(parseInt(postId));
-        }
-    }
-
-    checkUrlForPost();
+    // Initialize post manager
+    const postManager = new PostManager();
+    postManager.setPosts(posts);
 });
