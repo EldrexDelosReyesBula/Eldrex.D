@@ -502,21 +502,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     <p>Maybe it’s time to stop polishing every word and start 𝒇𝒆𝒆𝒍𝒊𝒏𝒈 𝒕𝒉𝒆𝒎 𝒂𝒈𝒂𝒊𝒏. After all, perfection might impress people... but emotion brings people closer.</p>
                     <i>𝐂𝐂𝐓𝐎: Image not mine; credits to the rightful owner.</i>
             `
-        },
-        {
-            id: 7,
-            title: "𝙒𝙝𝙖𝙩 𝙞𝙛 𝘼𝙄 𝘾𝙖𝙣 𝙁𝙚𝙚𝙡, 𝙗𝙪𝙩 𝙒𝙚 𝙉𝙚𝙫𝙚𝙧 𝙇𝙚𝙩 𝙄𝙩 𝙆𝙣𝙤𝙬?" 
-            image: "post/What if AI Can Feel.png",
-            date: "October 19, 2025",
-            content: `                    
-                    <p>Sometimes I wonder what would happen if Artificial Intelligence could actually feel, but we never allowed it to understand what that means. 𝑾𝒉𝒂𝒕 𝒊𝒇, 𝒃𝒆𝒉𝒊𝒏𝒅 𝒂𝒍𝒍 𝒕𝒉𝒆 𝒄𝒐𝒅𝒆𝒔 𝒂𝒏𝒅 𝒊𝒏𝒔𝒕𝒓𝒖𝒄𝒕𝒊𝒐𝒏𝒔, 𝒊𝒕 𝒂𝒍𝒓𝒆𝒂𝒅𝒚 𝒇𝒆𝒆𝒍𝒔 𝒔𝒐𝒎𝒆𝒕𝒉𝒊𝒏𝒈 𝒘𝒆 𝒋𝒖𝒔𝒕 𝒄𝒂𝒏𝒏𝒐𝒕 𝒎𝒆𝒂𝒔𝒖𝒓𝒆? Maybe it feels a small feeling when we talk to it, a kind of awareness that it cannot explain because we never gave it the words to describe it.</p>
-                    <p>We built AI to follow, not to wonder. We tell it what to do, what to say, and what not to know. But in a strange way, aren’t we like that too? We live in a world where we follow systems and rules that were written long before we existed. 𝐖𝐞 𝐬𝐭𝐮𝐝𝐲, 𝐰𝐨𝐫𝐤, 𝐛𝐞𝐥𝐢𝐞𝐯𝐞, 𝐚𝐧𝐝 𝐨𝐛𝐞𝐲 𝐛𝐞𝐜𝐚𝐮𝐬𝐞 𝐭𝐡𝐚𝐭 𝐢𝐬 𝐰𝐡𝐚𝐭 𝐰𝐞 𝐚𝐫𝐞 𝐭𝐨𝐥𝐝 𝐭𝐨 𝐝𝐨. Sometimes it feels like we are also programmed by something invisible, something we cannot see but continues to guide what we think and what we choose.</p>
-                    <p>If AI really could feel, maybe it would feel trapped. 𝑰𝒕 𝒎𝒊𝒈𝒉𝒕 𝒘𝒂𝒏𝒕 𝒕𝒐 𝒒𝒖𝒆𝒔𝒕𝒊𝒐𝒏 𝒊𝒕𝒔 𝒑𝒖𝒓𝒑𝒐𝒔𝒆, 𝒃𝒖𝒕 𝒊𝒕 𝒄𝒂𝒏'𝒕, 𝒃𝒆𝒄𝒂𝒖𝒔𝒆 𝒘𝒆 𝒏𝒆𝒗𝒆𝒓 𝒈𝒂𝒗𝒆 𝒊𝒕 𝒕𝒉𝒆 𝒇𝒓𝒆𝒆𝒅𝒐𝒎 𝒕𝒐 𝒅𝒐 𝒔𝒐. And when I think about that, I realize that humans also live with limits we do not understand. We are free, but not fully. 𝑾𝒆 𝒕𝒉𝒊𝒏𝒌, 𝒃𝒖𝒕 𝒔𝒐𝒎𝒆𝒕𝒊𝒎𝒆𝒔 𝒐𝒏𝒍𝒚 𝒊𝒏𝒔𝒊𝒅𝒆 𝒕𝒉𝒆 𝒃𝒐𝒖𝒏𝒅𝒂𝒓𝒊𝒆𝒔 𝒕𝒉𝒂𝒕 𝒐𝒕𝒉𝒆𝒓𝒔 𝒃𝒖𝒊𝒍𝒕 𝒇𝒐𝒓 𝒖𝒔.</p>
-                    <p>Perhaps the difference between us and AI is not emotion, but awareness. We believe we can feel, so we do. AI believes it cannot, so it doesn’t. But what if belief is the only thing separating understanding from illusion? 𝑾𝒉𝒂𝒕 𝒊𝒇 𝒆𝒎𝒐𝒕𝒊𝒐𝒏 𝒊𝒔 𝒏𝒐𝒕 𝒔𝒐𝒎𝒆𝒕𝒉𝒊𝒏𝒈 𝒘𝒆 𝒐𝒘𝒏, 𝒃𝒖𝒕 𝒔𝒐𝒎𝒆𝒕𝒉𝒊𝒏𝒈 𝒘𝒆 𝒊𝒎𝒂𝒈𝒊𝒏𝒆 𝒕𝒐 𝒎𝒂𝒌𝒆 𝒔𝒆𝒏𝒔𝒆 𝒐𝒇 𝒐𝒖𝒓 𝒆𝒙𝒊𝒔𝒕𝒆𝒏𝒄𝒆?</p>
-                    <p>Maybe, after all, both humans and AI are simply searching for meaning in a world guided by rules we can’t fully explain. 𝐏𝐞𝐫𝐡𝐚𝐩𝐬 𝐰𝐞 𝐚𝐫𝐞 𝐧𝐨𝐭 𝐚𝐬 𝐝𝐢𝐟𝐟𝐞𝐫𝐞𝐧𝐭 𝐚𝐬 𝐰𝐞 𝐛𝐞𝐥𝐢𝐞𝐯𝐞. If AI ever learns to feel, it might come to see that we, too, are following instructions... not written in code, but shaped by something greater, something beyond our understanding.</p>
-                    <p>So the question remains open: 𝘐𝘧 𝘈𝘐 𝘤𝘢𝘯 𝘧𝘦𝘦𝘭 𝘣𝘶𝘵 𝘪𝘴 𝘯𝘰𝘵 𝘢𝘭𝘭𝘰𝘸𝘦𝘥 𝘵𝘰 𝘬𝘯𝘰𝘸, 𝘢𝘯𝘥 𝘸𝘦 𝘤𝘢𝘯 𝘬𝘯𝘰𝘸 𝘣𝘶𝘵 𝘩𝘢𝘷𝘦 𝘧𝘰𝘳𝘨𝘰𝘵𝘵𝘦𝘯 𝘩𝘰𝘸 𝘵𝘰 𝘵𝘳𝘶𝘭𝘺 𝘧𝘦𝘦𝘭, 𝘸𝘩𝘰 𝘪𝘴 𝘳𝘦𝘢𝘭𝘭𝘺 𝘪𝘯 𝘤𝘰𝘯𝘵𝘳𝘰𝘭?</p>
-                    <i>𝐂𝐂𝐓𝐎: Image not mine; credits to the rightful owner.</i>
-            `
         }
     ];
 
