@@ -446,7 +446,7 @@ document.addEventListener('DOMContentLoaded', () => {
         {
             id: 4,
             title: "The strongest people are not those who show strength in front of us, but those who fight battles we know nothing about.",
-            image: "post/qoute01.png",
+            image: "post/quote01.png",
             date: "October 18, 2025",
             content: `
                     <p>This quote reminds me of how strength is often misunderstood. Many people think being strong 𝒎𝒆𝒂𝒏𝒔 𝒏𝒆𝒗𝒆𝒓 𝒄𝒓𝒚𝒊𝒏𝒈, 𝒏𝒆𝒗𝒆𝒓 𝒃𝒓𝒆𝒂𝒌𝒊𝒏𝒈, 𝒐𝒓 𝒂𝒍𝒘𝒂𝒚𝒔 𝒃𝒆𝒊𝒏𝒈 𝒃𝒓𝒂𝒗𝒆 𝒊𝒏 𝒇𝒓𝒐𝒏𝒕 𝒐𝒇 𝒐𝒕𝒉𝒆𝒓𝒔. But through my own experiences, I have learned that real strength is quiet. It happens 𝒘𝒉𝒆𝒏 𝒏𝒐 𝒐𝒏𝒆 𝒊𝒔 𝒘𝒂𝒕𝒄𝒉𝒊𝒏𝒈, in the moments when you have every reason to give up, but still choose to keep going.</p>
@@ -459,7 +459,7 @@ document.addEventListener('DOMContentLoaded', () => {
         {
             id: 5,
             title: "If you have time to sit, you have time to work.",
-            image: "post/qoute02.png",
+            image: "post/quote02.png",
             date: "October 18, 2025",
             content: `
                     <p>There were days when I used to sit quietly, doing nothing but thinking about what I wanted to achieve. I would look at the clock, telling myself I still had time, that maybe I'd start later. But later often turned into never. It was during one of those long pauses in my life that I realized something simple yet powerful.... 𝐭𝐢𝐦𝐞 𝐧𝐞𝐯𝐞𝐫 𝐬𝐭𝐨𝐩𝐬, 𝐞𝐯𝐞𝐧 𝐰𝐡𝐞𝐧 𝐢 𝐝𝐨.</p>
@@ -471,11 +471,11 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 {
             id: 6,
-            title: "𝐖𝐇𝐄𝐍 𝐏𝐄𝐑𝐅𝐄𝐂𝐓𝐈𝐎𝐍 𝐑𝐄𝐏𝐋𝐀𝐂𝐄𝐒 𝐄𝐌𝐎𝐓𝐈𝐎𝐍𝐒",
+            title: "𝐖𝐡𝐞𝐧 𝐏𝐞𝐫𝐟𝐞𝐜𝐭𝐢𝐨𝐧 𝐑𝐞𝐩𝐥𝐚𝐜𝐞𝐬 𝐄𝐦𝐨𝐭𝐢𝐨𝐧𝐬",
             image: "post/When Perfection Replaces Emotion.png",
             date: "October 18, 2025",
-            content: `
-                    <p>Communication is supposed to be 𝒕𝒉𝒆 𝒂𝒓𝒕 𝒐𝒇 𝒖𝒏𝒅𝒆𝒓𝒔𝒕𝒂𝒏𝒅𝒊𝒏𝒈, 𝗋𝗂𝗀𝗁𝗍? It’s how we show love, care, frustration, or even nonsense when we just want to talk. But now, with artificial intelligence everywhere, it feels like people are trying to sound perfect instead of being 𝐫𝐞𝐚𝐥. Some even ask AI, “𝘋𝘰𝘦𝘢 𝘵𝘩𝘪𝘢 𝘴𝘰𝘶𝘯𝘥 𝘨𝘰𝘰𝘥?” or “𝘞𝘩𝘢𝘵 𝘥𝘰𝘦𝘴 𝘮𝘺 𝘯𝘦𝘴𝘴𝘢𝘨𝘦 𝘳𝘦𝘢𝘭𝘭𝘺 𝘮𝘦𝘢𝘯?” before they send it to someone else.</p>
+            content: `                    
+<p>Communication is supposed to be 𝒕𝒉𝒆 𝒂𝒓𝒕 𝒐𝒇 𝒖𝒏𝒅𝒆𝒓𝒔𝒕𝒂𝒏𝒅𝒊𝒏𝒈, 𝗋𝗂𝗀𝗁𝗍? It’s how we show love, care, frustration, or even nonsense when we just want to talk. But now, with artificial intelligence everywhere, it feels like people are trying to sound perfect instead of being 𝐫𝐞𝐚𝐥. Some even ask AI, “𝘋𝘰𝘦𝘴 𝘵𝘩𝘪𝘴 𝘴𝘰𝘶𝘯𝘥 𝘨𝘰𝘰𝘥?” or “𝘞𝘩𝘢𝘵 𝘥𝘰𝘦𝘴 𝘮𝘺 𝘮𝘦𝘴𝘴𝘢𝘨𝘦 𝘳𝘦𝘢𝘭𝘭𝘺 𝘮𝘦𝘢𝘯?” before they send it to someone else.</p>
 
 <p>𝑃𝑒𝑟𝑓𝑒𝑐𝑡𝑖𝑜𝑛 𝑅𝑒𝑝𝑙𝑎𝑐𝑒𝑠 𝐸𝑚𝑜𝑡𝑖𝑜𝑛</p>
 <p>It’s kind of 𝒇𝒖𝒏𝒏𝒚 𝒂𝒏𝒅 𝒂 𝒃𝒊𝒕 𝒔𝒂𝒅… how we’ve turned our emotions into drafts waiting for AI approval.</p>
