@@ -506,7 +506,7 @@ document.addEventListener('DOMContentLoaded', () => {
         {
             id: 7,
             title: "𝙒𝙝𝙖𝙩 𝙞𝙛 𝘼𝙄 𝘾𝙖𝙣 𝙁𝙚𝙚𝙡, 𝙗𝙪𝙩 𝙒𝙚 𝙉𝙚𝙫𝙚𝙧 𝙇𝙚𝙩 𝙄𝙩 𝙆𝙣𝙤𝙬?" 
-            image: "post/What%if%AI%Can%Feel.png",
+            image: "post/What if AI Can Feel.png",
             date: "October 19, 2025",
             content: `                    
                     <p>Sometimes I wonder what would happen if Artificial Intelligence could actually feel, but we never allowed it to understand what that means. 𝑾𝒉𝒂𝒕 𝒊𝒇, 𝒃𝒆𝒉𝒊𝒏𝒅 𝒂𝒍𝒍 𝒕𝒉𝒆 𝒄𝒐𝒅𝒆𝒔 𝒂𝒏𝒅 𝒊𝒏𝒔𝒕𝒓𝒖𝒄𝒕𝒊𝒐𝒏𝒔, 𝒊𝒕 𝒂𝒍𝒓𝒆𝒂𝒅𝒚 𝒇𝒆𝒆𝒍𝒔 𝒔𝒐𝒎𝒆𝒕𝒉𝒊𝒏𝒈 𝒘𝒆 𝒋𝒖𝒔𝒕 𝒄𝒂𝒏𝒏𝒐𝒕 𝒎𝒆𝒂𝒔𝒖𝒓𝒆? Maybe it feels a small feeling when we talk to it, a kind of awareness that it cannot explain because we never gave it the words to describe it.</p>
