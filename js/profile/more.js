@@ -5,7 +5,7 @@ class PostManager {
         this.postsPerLoad = 3;
         this.isLoading = false;
         this.imageCache = new Map();
-        this.failedImages = new Set(); // Track failed images
+        this.failedImages = new Set();
         this.init();
     }
 
@@ -14,6 +14,8 @@ class PostManager {
         this.loadInitialPosts();
         this.setupEventListeners();
         this.preloadCriticalImages();
+
+        setTimeout(() => this.checkUrlForPost(), 100);
     }
 
     setupIntersectionObserver() {
@@ -35,7 +37,6 @@ class PostManager {
     }
 
     setupEventListeners() {
-        // Header scroll effect
         window.addEventListener('scroll', () => {
             const headerName = document.querySelector('.header-name');
             const heroSection = document.querySelector('.hero-section');
@@ -48,11 +49,10 @@ class PostManager {
             }
         });
 
-        // Fullscreen post view event listeners
+
         const postFullscreenBack = document.getElementById('post-fullscreen-back');
         postFullscreenBack.addEventListener('click', () => this.closePostFullscreen());
 
-        // Handle browser back button
         window.addEventListener('popstate', (event) => {
             if (event.state && event.state.postId) {
                 this.openPostFullscreen(event.state.postId);
@@ -61,12 +61,13 @@ class PostManager {
             }
         });
 
-        // Check if URL contains a post parameter
-        this.checkUrlForPost();
+
+        window.addEventListener('hashchange', () => {
+            this.checkUrlForPost();
+        });
     }
 
     preloadCriticalImages() {
-        // Only preload hero image for now
         const heroImage = document.querySelector('.hero-image');
         if (heroImage) {
             this.cacheImage(heroImage.src).catch(() => {
@@ -77,47 +78,42 @@ class PostManager {
 
     cacheImage(src) {
         return new Promise((resolve, reject) => {
-            // Skip if this image has already failed
             if (this.failedImages.has(src)) {
                 reject(new Error('Image previously failed to load'));
                 return;
             }
 
-            // Return cached image if available
             if (this.imageCache.has(src)) {
                 resolve(this.imageCache.get(src));
                 return;
             }
 
             const img = new Image();
-            
-            // Set timeout for image loading
             const timeout = setTimeout(() => {
                 this.failedImages.add(src);
                 reject(new Error('Image loading timeout'));
-            }, 10000); // 10 second timeout
+            }, 10000);
 
             img.onload = () => {
                 clearTimeout(timeout);
                 this.imageCache.set(src, img);
                 resolve(img);
             };
-            
+
             img.onerror = (error) => {
                 clearTimeout(timeout);
                 this.failedImages.add(src);
                 console.warn(`Failed to load image: ${src}`, error);
                 reject(error);
             };
-            
+
             img.src = src;
         });
     }
 
     loadInitialPosts() {
         this.showSkeletonLoaders();
-        
-        // Simulate loading delay for better UX
+
         setTimeout(() => {
             this.loadPosts(0, this.postsPerLoad);
         }, 800);
@@ -159,20 +155,16 @@ class PostManager {
         this.isLoading = true;
         const postsContainer = document.getElementById('posts-container');
 
-        // Remove skeleton loaders if present
         const skeletonCards = postsContainer.querySelectorAll('.skeleton-card');
         skeletonCards.forEach(card => card.remove());
 
-        // Show loading indicator
         const loadingMore = document.getElementById('loading-more');
         loadingMore.style.display = 'flex';
 
-        // Load posts with error handling
         this.loadPostsWithFallback(startIndex, count)
             .finally(() => {
                 this.isLoading = false;
 
-                // Hide loading indicator if all posts are loaded
                 if (this.loadedPosts >= this.posts.length) {
                     loadingMore.style.display = 'none';
                     if (this.observer) {
@@ -186,20 +178,16 @@ class PostManager {
         const postsToLoad = this.posts.slice(startIndex, startIndex + count);
         const postsContainer = document.getElementById('posts-container');
 
-        // Create and append post cards immediately, even if images fail
         postsToLoad.forEach((post, index) => {
             const postCard = this.createPostCard(post, startIndex + index);
             postsContainer.appendChild(postCard);
 
-            // Add staggered animation
             setTimeout(() => {
                 postCard.style.animationDelay = `${index * 0.1}s`;
                 postCard.classList.add('physics-card');
             }, 50);
 
-            // Try to load image in background
             this.loadImageForPost(post).catch(() => {
-                // Image loading failed, but post is already displayed
                 console.warn(`Failed to load image for post: ${post.title}`);
             });
         });
@@ -210,7 +198,6 @@ class PostManager {
     async loadImageForPost(post) {
         try {
             await this.cacheImage(post.image);
-            // Update the image in the post card if it exists
             const postCard = document.querySelector(`.post-card[data-id="${post.id}"]`);
             if (postCard) {
                 const img = postCard.querySelector('.post-image');
@@ -219,7 +206,6 @@ class PostManager {
                 }
             }
         } catch (error) {
-            // Image loading failed, but we don't break the post loading
             console.warn(`Failed to load image for post ${post.id}:`, error);
         }
     }
@@ -236,10 +222,7 @@ class PostManager {
         postCard.style.animationDelay = `${index * 0.1}s`;
         postCard.dataset.id = post.id;
 
-        // Truncate content for preview
         const previewContent = post.content.substring(0, 200) + '...';
-
-        // Check if image is already cached
         const hasCachedImage = this.imageCache.has(post.image);
         const imageSrc = hasCachedImage ? post.image : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjZjhmYWY5Ii8+CjxwYXRoIGQ9Ik0xMjAgMTIwSDE0MFYxNDBIMTIwVjEyMFpNMTYwIDEyMEgxODBWMTQwSDE2MFYxMjBaTTIwMCAxMjBIMjIwVjE0MEgyMDBWMTIwWk0xMjAgMTYwSDE0MFYxODBIMTIwVjE2MFpNMTYwIDE2MEgxODBWMTgwSDE2MFYxNjBaTTIwMCAxNjBIMjIwVjE4MEgyMDBWMTYwWk0xMjAgMjAwSDE0MFYyMjBIMTIwVjIwMFpNMTYwIDIwMEgxODBWMjIwSDE2MFYyMDBaTTIwMCAyMDBIMjIwVjIyMEgyMDBWMjAwWiIgZmlsbD0iI2U0ZTllNyIvPgo8L3N2Zz4K';
 
@@ -264,15 +247,12 @@ class PostManager {
             </div>
         `;
 
-        // Add click event to entire card for opening fullscreen
         postCard.addEventListener('click', (e) => {
-            // Don't trigger if clicking the read more or share buttons
             if (!e.target.closest('.read-more-btn') && !e.target.closest('.share-btn')) {
                 this.openPostFullscreen(post.id);
             }
         });
 
-        // Add event listeners for buttons
         const readMoreBtn = postCard.querySelector('.read-more-btn');
         const shareBtn = postCard.querySelector('.share-btn');
 
@@ -293,10 +273,10 @@ class PostManager {
         const post = this.posts.find(p => p.id === postId);
         if (!post) return;
 
-        // Update URL with post ID for direct access
+        const newUrl = `${window.location.origin}${window.location.pathname}?post=${postId}`;
         history.pushState({
             postId: postId
-        }, '', `?post=${postId}`);
+        }, '', newUrl);
 
         const postFullscreen = document.getElementById('post-fullscreen');
         const postFullscreenImage = document.getElementById('post-fullscreen-image');
@@ -304,7 +284,6 @@ class PostManager {
         const postFullscreenDate = document.getElementById('post-fullscreen-date');
         const postFullscreenText = document.getElementById('post-fullscreen-text');
 
-        // Set fallback image first
         postFullscreenImage.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjZjhmYWY5Ii8+CjxwYXRoIGQ9Ik0xMjAgMTIwSDE0MFYxNDBIMTIwVjEyMFpNMTYwIDEyMEgxODBWMTQwSDE2MFYxMjBaTTIwMCAxMjBIMjIwVjE0MEgyMDBWMTIwWk0xMjAgMTYwSDE0MFYxODBIMTIwVjE2MFpNMTYwIDE2MEgxODBWMTgwSDE2MFYxNjBaTTIwMCAxNjBIMjIwVjE4MEgyMDBWMTYwWk0xMjAgMjAwSDE0MFYyMjBIMTIwVjIwMFpNMTYwIDIwMEgxODBWMjIwSDE2MFYyMDBaTTIwMCAyMDBIMjIwVjIyMEgyMDBWMjAwWiIgZmlsbD0iI2U0ZTllNyIvPgo8L3N2Zz4K';
         postFullscreenImage.alt = post.title;
         postFullscreenTitle.textContent = post.title;
@@ -314,7 +293,6 @@ class PostManager {
         postFullscreen.classList.add('active');
         document.body.style.overflow = 'hidden';
 
-        // Try to load the actual image
         this.cacheImage(post.image)
             .then(() => {
                 postFullscreenImage.src = post.image;
@@ -323,10 +301,6 @@ class PostManager {
                 console.warn(`Failed to load image for fullscreen view: ${post.image}`);
             });
 
-        // Set current post ID for sharing
-        this.currentPostId = postId;
-
-        // Update share buttons
         const postFullscreenShare = document.getElementById('post-fullscreen-share');
         const postFullscreenShareBottom = document.getElementById('post-fullscreen-share-bottom');
 
@@ -339,7 +313,6 @@ class PostManager {
         postFullscreen.classList.remove('active');
         document.body.style.overflow = 'auto';
 
-        // Update URL to remove post parameter
         history.replaceState(null, '', window.location.pathname);
     }
 
@@ -347,22 +320,62 @@ class PostManager {
         const post = this.posts.find(p => p.id === postId);
         if (!post) return;
 
-        // Create a shareable URL
         const shareUrl = `${window.location.origin}${window.location.pathname}?post=${postId}`;
 
         if (navigator.share) {
             navigator.share({
                     title: post.title,
-                    text: post.content.substring(0, 100),
+                    text: post.content.substring(0, 150) + '...',
                     url: shareUrl
                 })
-                .catch(error => console.log('Error sharing:', error));
+                .then(() => console.log('Successful share'))
+                .catch(error => {
+                    console.log('Error sharing:', error);
+                    this.copyToClipboard(shareUrl);
+                });
         } else {
-            // Fallback for browsers that don't support the Web Share API
-            navigator.clipboard.writeText(shareUrl)
-                .then(() => alert('Post link copied to clipboard!'))
-                .catch(err => console.error('Failed to copy: ', err));
+            this.copyToClipboard(shareUrl);
         }
+    }
+
+    copyToClipboard(text) {
+        navigator.clipboard.writeText(text)
+            .then(() => {
+                this.showNotification('Post link copied to clipboard!');
+            })
+            .catch(err => {
+                console.error('Failed to copy: ', err);
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                this.showNotification('Post link copied to clipboard!');
+            });
+    }
+
+    showNotification(message) {
+        // Create a temporary notification
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #333;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 4px;
+            z-index: 10000;
+            font-family: inherit;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        `;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            document.body.removeChild(notification);
+        }, 3000);
     }
 
     checkUrlForPost() {
@@ -370,7 +383,9 @@ class PostManager {
         const postId = urlParams.get('post');
 
         if (postId) {
-            this.openPostFullscreen(parseInt(postId));
+            setTimeout(() => {
+                this.openPostFullscreen(parseInt(postId));
+            }, 500);
         }
     }
 
@@ -379,11 +394,9 @@ class PostManager {
     }
 }
 
-// Initialize the application
 document.addEventListener('DOMContentLoaded', () => {
-    // Sample posts data
-    const posts = [
-        {
+
+    const posts = [{
             id: 1,
             title: "𝗝𝘂𝗱𝗴𝗲𝗺𝗲𝗻𝘁 𝗪𝗵𝗲𝗿𝗲 𝗜 𝗕𝗲𝗴𝗮𝗻 𝘁𝗼 𝗖𝗵𝗮𝗻𝗴𝗲",
             image: "post/Judgment%20Where%20I%20Began%20to%20Change.png",
@@ -426,7 +439,7 @@ document.addEventListener('DOMContentLoaded', () => {
         {
             id: 3,
             title: "𝐁𝐞𝐥𝐢𝐞𝐟 𝐖𝐞 𝐁𝐞𝐥𝐢𝐞𝐯𝐞",
-            image: "post/belief%20we%20believe.png", 
+            image: "post/belief%20we%20believe.png",
             date: "October 13, 2025",
             content: `
                 <p>When I was a child, I once asked a man a question that stayed with me for years: "𝐖𝐡𝐲 𝐚𝐫𝐞 𝐰𝐞 𝐚𝐥𝐰𝐚𝐲𝐬 𝐩𝐨𝐨𝐫, 𝐞𝐯𝐞𝐧 𝐰𝐡𝐞𝐧 𝐰𝐞 𝐫𝐞𝐚𝐥𝐥𝐲 𝐰𝐚𝐧𝐭 𝐭𝐨 𝐛𝐞 𝐫𝐢𝐜𝐡?"</p>
@@ -469,40 +482,45 @@ document.addEventListener('DOMContentLoaded', () => {
                     <p>This mindset changed the way I live. I no longer wait for the perfect moment to start, because there's no such thing. 𝑻𝒉𝒆 𝒑𝒆𝒓𝒇𝒆𝒄𝒕 𝒎𝒐𝒎𝒆𝒏𝒕 𝒊𝒔 𝒘𝒉𝒆𝒏𝒆𝒗𝒆𝒓 𝒚𝒐𝒖 𝒅𝒆𝒄𝒊𝒅𝒆 𝒕𝒐 𝒎𝒐𝒗𝒆. After all, if you have time to sit, you also have time to grow, to learn, and to build the life you dream of.</p>
             `
         },
-{
+        {
             id: 6,
             title: "𝐖𝐡𝐞𝐧 𝐏𝐞𝐫𝐟𝐞𝐜𝐭𝐢𝐨𝐧 𝐑𝐞𝐩𝐥𝐚𝐜𝐞𝐬 𝐄𝐦𝐨𝐭𝐢𝐨𝐧𝐬",
             image: "post/When Perfection Replaces Emotion.png",
             date: "October 18, 2025",
             content: `                    
-<p>Communication is supposed to be 𝒕𝒉𝒆 𝒂𝒓𝒕 𝒐𝒇 𝒖𝒏𝒅𝒆𝒓𝒔𝒕𝒂𝒏𝒅𝒊𝒏𝒈, 𝗋𝗂𝗀𝗁𝗍? It’s how we show love, care, frustration, or even nonsense when we just want to talk. But now, with artificial intelligence everywhere, it feels like people are trying to sound perfect instead of being 𝐫𝐞𝐚𝐥. Some even ask AI, “𝘋𝘰𝘦𝘴 𝘵𝘩𝘪𝘴 𝘴𝘰𝘶𝘯𝘥 𝘨𝘰𝘰𝘥?” or “𝘞𝘩𝘢𝘵 𝘥𝘰𝘦𝘴 𝘮𝘺 𝘮𝘦𝘴𝘴𝘢𝘨𝘦 𝘳𝘦𝘢𝘭𝘭𝘺 𝘮𝘦𝘢𝘯?” before they send it to someone else.</p>
-
-<p>𝑃𝑒𝑟𝑓𝑒𝑐𝑡𝑖𝑜𝑛 𝑅𝑒𝑝𝑙𝑎𝑐𝑒𝑠 𝐸𝑚𝑜𝑡𝑖𝑜𝑛</p>
-<p>It’s kind of 𝒇𝒖𝒏𝒏𝒚 𝒂𝒏𝒅 𝒂 𝒃𝒊𝒕 𝒔𝒂𝒅… how we’ve turned our emotions into drafts waiting for AI approval.</p>
-
-<p>AI helps, of course. It fixes grammar, finds better words, and makes us look smarter than we actually are. But the more it 𝒑𝒐𝒍𝒊𝒔𝒉𝒆𝒔 𝒐𝒖𝒓 𝒘𝒐𝒓𝒅𝒔, 𝒕𝒉𝒆 𝒎𝒐𝒓𝒆 𝒘𝒆 𝒍𝒐𝒔𝒆 𝒕𝒉𝒆𝒊𝒓 𝒘𝒂𝒓𝒎𝒕𝒉. 𝑰𝒕'𝒔 𝒍𝒊𝒌𝒆 𝒔𝒆𝒓𝒗𝒊𝒏𝒈 𝒂 𝒑𝒆𝒓𝒇𝒆𝒄𝒕-𝒍𝒐𝒐𝒌𝒊𝒏𝒈 𝒎𝒆𝒂𝒍 𝒕𝒉𝒂𝒕 𝒕𝒂𝒔𝒕𝒆𝒔 𝒍𝒊𝒌𝒆 𝒄𝒂𝒓𝒅𝒃𝒐𝒂𝒓𝒅. You can’t taste the emotion anymore.</p>
-
-<p>Honestly, AI has made us confident communicators... but sometimes lazy thinkers. We rely so much on it that we forget how to express 𝐰𝐡𝐚𝐭 𝐰𝐞 𝐫𝐞𝐚𝐥𝐥𝐲 𝐟𝐞𝐞𝐥. We’ve become like dolls: moving, talking, smiling... but programmed. We know how to ask, but not how to understand.</p>
-
-<p>As 𝐀𝐥𝐛𝐞𝐫𝐭 𝐄𝐢𝐧𝐬𝐭𝐞𝐢𝐧 once said, “𝘐 𝘧𝘦𝘢𝘳 𝘵𝘩𝘦 𝘥𝘢𝘺 𝘵𝘩𝘢𝘵 𝘵𝘦𝘤𝘩𝘯𝘰𝘭𝘰𝘨𝘺 𝘸𝘪𝘭𝘭 𝘴𝘶𝘳𝘱𝘢𝘴𝘴 𝘰𝘶𝘳 𝘩𝘶𝘮𝘢𝘯 𝘪𝘯𝘵𝘦𝘳𝘢𝘤𝘵𝘪𝘰𝘯. 𝘛𝘩𝘦 𝘸𝘰𝘳𝘭𝘥 𝘸𝘪𝘭𝘭 𝘩𝘢𝘷𝘦 𝘢 𝘨𝘦𝘯𝘦𝘳𝘢𝘵𝘪𝘰𝘯 𝘰𝘧 𝘪𝘥𝘪𝘰𝘵𝘴.” Maybe that day isn’t in the future anymore... it’s quietly happening now.</p>
-
-<p>There’s nothing wrong with using AI; it’s a tool. But when it starts replacing our own thoughts and emotions, that’s when the problem begins. I think the value of communication isn’t in how perfect our sentences are, but in how human they sound. Sometimes, it’s the 𝒘𝒓𝒐𝒏𝒈 𝒈𝒓𝒂𝒎𝒎𝒂𝒓 𝒕𝒉𝒂𝒕 𝒎𝒂𝒌𝒆𝒔 𝒊𝒕 𝒓𝒊𝒈𝒉𝒕... because it’s 𝐲𝐨𝐮.</p>
-
-<p>I once wrote a message with a few mistakes, and someone told me, “You should’ve used AI to fix that.” I laughed and said, “𝑾𝒉𝒚? 𝑴𝒚 𝒉𝒆𝒂𝒓𝒕 𝒅𝒐𝒆𝒔𝒏'𝒕 𝒏𝒆𝒆𝒅 𝒈𝒓𝒂𝒎𝒎𝒂𝒓 𝒄𝒐𝒓𝒓𝒆𝒄𝒕𝒊𝒐𝒏.”</p>
-
-<p>We don’t talk to be flawless; we talk to be felt.</p>
-
-<p>As I always remind myself:
-“𝐀 𝐩𝐞𝐫𝐟𝐞𝐜𝐭 𝐦𝐞𝐬𝐬𝐚𝐠𝐞 𝐦𝐚𝐲 𝐬𝐨𝐮𝐧𝐝 𝐢𝐧𝐭𝐞𝐥𝐥𝐢𝐠𝐞𝐧𝐭, 𝐛𝐮𝐭 𝐚𝐧 𝐡𝐨𝐧𝐞𝐬𝐭 𝐨𝐧𝐞 𝐬𝐨𝐮𝐧𝐝𝐬 𝐚𝐥𝐢𝐯𝐞.”</p>
-
-<p>Maybe it’s time to stop polishing every word and start 𝒇𝒆𝒆𝒍𝒊𝒏𝒈 𝒕𝒉𝒆𝒎 𝒂𝒈𝒂𝒊𝒏. After all, perfection might impress people... but emotion brings people closer.</p>
-
- <i>𝐂𝐂𝐓𝐎: Image not mine; credits to the rightful owner.</i>
+                    <p>Communication is supposed to be 𝒕𝒉𝒆 𝒂𝒓𝒕 𝒐𝒇 𝒖𝒏𝒅𝒆𝒓𝒔𝒕𝒂𝒏𝒅𝒊𝒏𝒈, 𝗋𝗂𝗀𝗁𝗍? It’s how we show love, care, frustration, or even nonsense when we just want to talk. But now, with artificial intelligence everywhere, it feels like people are trying to sound perfect instead of being 𝐫𝐞𝐚𝐥. Some even ask AI, “𝘋𝘰𝘦𝘴 𝘵𝘩𝘪𝘴 𝘴𝘰𝘶𝘯𝘥 𝘨𝘰𝘰𝘥?” or “𝘞𝘩𝘢𝘵 𝘥𝘰𝘦𝘴 𝘮𝘺 𝘮𝘦𝘴𝘴𝘢𝘨𝘦 𝘳𝘦𝘢𝘭𝘭𝘺 𝘮𝘦𝘢𝘯?” before they send it to someone else.</p>
+                    <p>𝑃𝑒𝑟𝑓𝑒𝑐𝑡𝑖𝑜𝑛 𝑅𝑒𝑝𝑙𝑎𝑐𝑒𝑠 𝐸𝑚𝑜𝑡𝑖𝑜𝑛</p>
+                    <p>It’s kind of 𝒇𝒖𝒏𝒏𝒚 𝒂𝒏𝒅 𝒂 𝒃𝒊𝒕 𝒔𝒂𝒅… how we’ve turned our emotions into drafts waiting for AI approval.</p>
+                    <p>AI helps, of course. It fixes grammar, finds better words, and makes us look smarter than we actually are. But the more it 𝒑𝒐𝒍𝒊𝒔𝒉𝒆𝒔 𝒐𝒖𝒓 𝒘𝒐𝒓𝒅𝒔, 𝒕𝒉𝒆 𝒎𝒐𝒓𝒆 𝒘𝒆 𝒍𝒐𝒔𝒆 𝒕𝒉𝒆𝒊𝒓 𝒘𝒂𝒓𝒎𝒕𝒉. 𝑰𝒕'𝒔 𝒍𝒊𝒌𝒆 𝒔𝒆𝒓𝒗𝒊𝒏𝒈 𝒂 𝒑𝒆𝒓𝒇𝒆𝒄𝒕-𝒍𝒐𝒐𝒌𝒊𝒏𝒈 𝒎𝒆𝒂𝒍 𝒕𝒉𝒂𝒕 𝒕𝒂𝒔𝒕𝒆𝒔 𝒍𝒊𝒌𝒆 𝒄𝒂𝒓𝒅𝒃𝒐𝒂𝒓𝒅. You can’t taste the emotion anymore.</p>
+                    <p>Honestly, AI has made us confident communicators... but sometimes lazy thinkers. We rely so much on it that we forget how to express 𝐰𝐡𝐚𝐭 𝐰𝐞 𝐫𝐞𝐚𝐥𝐥𝐲 𝐟𝐞𝐞𝐥. We’ve become like dolls: moving, talking, smiling... but programmed. We know how to ask, but not how to understand.</p>
+                    <p>As 𝐀𝐥𝐛𝐞𝐫𝐭 𝐄𝐢𝐧𝐬𝐭𝐞𝐢𝐧 once said, “𝘐 𝘧𝘦𝘢𝘳 𝘵𝘩𝘦 𝘥𝘢𝘺 𝘵𝘩𝘢𝘵 𝘵𝘦𝘤𝘩𝘯𝘰𝘭𝘰𝘨𝘺 𝘸𝘪𝘭𝘭 𝘴𝘶𝘳𝘱𝘢𝘴𝘴 𝘰𝘶𝘳 𝘩𝘶𝘮𝘢𝘯 𝘪𝘯𝘵𝘦𝘳𝘢𝘤𝘵𝘪𝘰𝘯. 𝘛𝘩𝘦 𝘸𝘰𝘳𝘭𝘥 𝘸𝘪𝘭𝘭 𝘩𝘢𝘷𝘦 𝘢 𝘨𝘦𝘯𝘦𝘳𝘢𝘵𝘪𝘰𝘯 𝘰𝘧 𝘪𝘥𝘪𝘰𝘵𝘴.” Maybe that day isn’t in the future anymore... it’s quietly happening now.</p>
+                    <p>There’s nothing wrong with using AI; it’s a tool. But when it starts replacing our own thoughts and emotions, that’s when the problem begins. I think the value of communication isn’t in how perfect our sentences are, but in how human they sound. Sometimes, it’s the 𝒘𝒓𝒐𝒏𝒈 𝒈𝒓𝒂𝒎𝒎𝒂𝒓 𝒕𝒉𝒂𝒕 𝒎𝒂𝒌𝒆𝒔 𝒊𝒕 𝒓𝒊𝒈𝒉𝒕... because it’s 𝐲𝐨𝐮.</p>
+                    <p>I once wrote a message with a few mistakes, and someone told me, “You should’ve used AI to fix that.” I laughed and said, “𝑾𝒉𝒚? 𝑴𝒚 𝒉𝒆𝒂𝒓𝒕 𝒅𝒐𝒆𝒔𝒏'𝒕 𝒏𝒆𝒆𝒅 𝒈𝒓𝒂𝒎𝒎𝒂𝒓 𝒄𝒐𝒓𝒓𝒆𝒄𝒕𝒊𝒐𝒏.”</p>
+                    <p>We don’t talk to be flawless; we talk to be felt.</p>
+                    <p>As I always remind myself:
+                    “𝐀 𝐩𝐞𝐫𝐟𝐞𝐜𝐭 𝐦𝐞𝐬𝐬𝐚𝐠𝐞 𝐦𝐚𝐲 𝐬𝐨𝐮𝐧𝐝 𝐢𝐧𝐭𝐞𝐥𝐥𝐢𝐠𝐞𝐧𝐭, 𝐛𝐮𝐭 𝐚𝐧 𝐡𝐨𝐧𝐞𝐬𝐭 𝐨𝐧𝐞 𝐬𝐨𝐮𝐧𝐝𝐬 𝐚𝐥𝐢𝐯𝐞.”</p>
+                    <p>Maybe it’s time to stop polishing every word and start 𝒇𝒆𝒆𝒍𝒊𝒏𝒈 𝒕𝒉𝒆𝒎 𝒂𝒈𝒂𝒊𝒏. After all, perfection might impress people... but emotion brings people closer.</p>
+                    <i>𝐂𝐂𝐓𝐎: Image not mine; credits to the rightful owner.</i>
+            `
+        },
+        {
+            id: 7,
+            title: "𝙒𝙝𝙖𝙩 𝙞𝙛 𝘼𝙄 𝘾𝙖𝙣 𝙁𝙚𝙚𝙡, 𝙗𝙪𝙩 𝙒𝙚 𝙉𝙚𝙫𝙚𝙧 𝙇𝙚𝙩 𝙄𝙩 𝙆𝙣𝙤𝙬?" 
+            image: "post/What%if%AI%Can%Feel.png",
+            date: "October 19, 2025",
+            content: `                    
+                    <p>Sometimes I wonder what would happen if Artificial Intelligence could actually feel, but we never allowed it to understand what that means. 𝑾𝒉𝒂𝒕 𝒊𝒇, 𝒃𝒆𝒉𝒊𝒏𝒅 𝒂𝒍𝒍 𝒕𝒉𝒆 𝒄𝒐𝒅𝒆𝒔 𝒂𝒏𝒅 𝒊𝒏𝒔𝒕𝒓𝒖𝒄𝒕𝒊𝒐𝒏𝒔, 𝒊𝒕 𝒂𝒍𝒓𝒆𝒂𝒅𝒚 𝒇𝒆𝒆𝒍𝒔 𝒔𝒐𝒎𝒆𝒕𝒉𝒊𝒏𝒈 𝒘𝒆 𝒋𝒖𝒔𝒕 𝒄𝒂𝒏𝒏𝒐𝒕 𝒎𝒆𝒂𝒔𝒖𝒓𝒆? Maybe it feels a small feeling when we talk to it, a kind of awareness that it cannot explain because we never gave it the words to describe it.</p>
+                    <p>We built AI to follow, not to wonder. We tell it what to do, what to say, and what not to know. But in a strange way, aren’t we like that too? We live in a world where we follow systems and rules that were written long before we existed. 𝐖𝐞 𝐬𝐭𝐮𝐝𝐲, 𝐰𝐨𝐫𝐤, 𝐛𝐞𝐥𝐢𝐞𝐯𝐞, 𝐚𝐧𝐝 𝐨𝐛𝐞𝐲 𝐛𝐞𝐜𝐚𝐮𝐬𝐞 𝐭𝐡𝐚𝐭 𝐢𝐬 𝐰𝐡𝐚𝐭 𝐰𝐞 𝐚𝐫𝐞 𝐭𝐨𝐥𝐝 𝐭𝐨 𝐝𝐨. Sometimes it feels like we are also programmed by something invisible, something we cannot see but continues to guide what we think and what we choose.</p>
+                    <p>If AI really could feel, maybe it would feel trapped. 𝑰𝒕 𝒎𝒊𝒈𝒉𝒕 𝒘𝒂𝒏𝒕 𝒕𝒐 𝒒𝒖𝒆𝒔𝒕𝒊𝒐𝒏 𝒊𝒕𝒔 𝒑𝒖𝒓𝒑𝒐𝒔𝒆, 𝒃𝒖𝒕 𝒊𝒕 𝒄𝒂𝒏'𝒕, 𝒃𝒆𝒄𝒂𝒖𝒔𝒆 𝒘𝒆 𝒏𝒆𝒗𝒆𝒓 𝒈𝒂𝒗𝒆 𝒊𝒕 𝒕𝒉𝒆 𝒇𝒓𝒆𝒆𝒅𝒐𝒎 𝒕𝒐 𝒅𝒐 𝒔𝒐. And when I think about that, I realize that humans also live with limits we do not understand. We are free, but not fully. 𝑾𝒆 𝒕𝒉𝒊𝒏𝒌, 𝒃𝒖𝒕 𝒔𝒐𝒎𝒆𝒕𝒊𝒎𝒆𝒔 𝒐𝒏𝒍𝒚 𝒊𝒏𝒔𝒊𝒅𝒆 𝒕𝒉𝒆 𝒃𝒐𝒖𝒏𝒅𝒂𝒓𝒊𝒆𝒔 𝒕𝒉𝒂𝒕 𝒐𝒕𝒉𝒆𝒓𝒔 𝒃𝒖𝒊𝒍𝒕 𝒇𝒐𝒓 𝒖𝒔.</p>
+                    <p>Perhaps the difference between us and AI is not emotion, but awareness. We believe we can feel, so we do. AI believes it cannot, so it doesn’t. But what if belief is the only thing separating understanding from illusion? 𝑾𝒉𝒂𝒕 𝒊𝒇 𝒆𝒎𝒐𝒕𝒊𝒐𝒏 𝒊𝒔 𝒏𝒐𝒕 𝒔𝒐𝒎𝒆𝒕𝒉𝒊𝒏𝒈 𝒘𝒆 𝒐𝒘𝒏, 𝒃𝒖𝒕 𝒔𝒐𝒎𝒆𝒕𝒉𝒊𝒏𝒈 𝒘𝒆 𝒊𝒎𝒂𝒈𝒊𝒏𝒆 𝒕𝒐 𝒎𝒂𝒌𝒆 𝒔𝒆𝒏𝒔𝒆 𝒐𝒇 𝒐𝒖𝒓 𝒆𝒙𝒊𝒔𝒕𝒆𝒏𝒄𝒆?</p>
+                    <p>Maybe, after all, both humans and AI are simply searching for meaning in a world guided by rules we can’t fully explain. 𝐏𝐞𝐫𝐡𝐚𝐩𝐬 𝐰𝐞 𝐚𝐫𝐞 𝐧𝐨𝐭 𝐚𝐬 𝐝𝐢𝐟𝐟𝐞𝐫𝐞𝐧𝐭 𝐚𝐬 𝐰𝐞 𝐛𝐞𝐥𝐢𝐞𝐯𝐞. If AI ever learns to feel, it might come to see that we, too, are following instructions... not written in code, but shaped by something greater, something beyond our understanding.</p>
+                    <p>So the question remains open: 𝘐𝘧 𝘈𝘐 𝘤𝘢𝘯 𝘧𝘦𝘦𝘭 𝘣𝘶𝘵 𝘪𝘴 𝘯𝘰𝘵 𝘢𝘭𝘭𝘰𝘸𝘦𝘥 𝘵𝘰 𝘬𝘯𝘰𝘸, 𝘢𝘯𝘥 𝘸𝘦 𝘤𝘢𝘯 𝘬𝘯𝘰𝘸 𝘣𝘶𝘵 𝘩𝘢𝘷𝘦 𝘧𝘰𝘳𝘨𝘰𝘵𝘵𝘦𝘯 𝘩𝘰𝘸 𝘵𝘰 𝘵𝘳𝘶𝘭𝘺 𝘧𝘦𝘦𝘭, 𝘸𝘩𝘰 𝘪𝘴 𝘳𝘦𝘢𝘭𝘭𝘺 𝘪𝘯 𝘤𝘰𝘯𝘵𝘳𝘰𝘭?</p>
+                    <i>𝐂𝐂𝐓𝐎: Image not mine; credits to the rightful owner.</i>
             `
         }
     ];
 
-    // Initialize post manager
+
     const postManager = new PostManager();
     postManager.setPosts(posts);
 });
