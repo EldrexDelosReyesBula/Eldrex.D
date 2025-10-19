@@ -472,7 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
 {
             id: 6,
             title: "𝐖𝐇𝐄𝐍 𝐏𝐄𝐑𝐅𝐄𝐂𝐓𝐈𝐎𝐍 𝐑𝐄𝐏𝐋𝐀𝐂𝐄𝐒 𝐄𝐌𝐎𝐓𝐈𝐎𝐍𝐒",
-            image: "post/.png",
+            image: "post/When Perfection Replaces Emotion.png",
             date: "October 18, 2025",
             content: `
                     <p>Communication is supposed to be 𝒕𝒉𝒆 𝒂𝒓𝒕 𝒐𝒇 𝒖𝒏𝒅𝒆𝒓𝒔𝒕𝒂𝒏𝒅𝒊𝒏𝒈, 𝗋𝗂𝗀𝗁𝗍? It’s how we show love, care, frustration, or even nonsense when we just want to talk. But now, with artificial intelligence everywhere, it feels like people are trying to sound perfect instead of being 𝐫𝐞𝐚𝐥. Some even ask AI, “𝘋𝘰𝘦𝘢 𝘵𝘩𝘪𝘢 𝘴𝘰𝘶𝘯𝘥 𝘨𝘰𝘰𝘥?” or “𝘞𝘩𝘢𝘵 𝘥𝘰𝘦𝘴 𝘮𝘺 𝘯𝘦𝘴𝘴𝘢𝘨𝘦 𝘳𝘦𝘢𝘭𝘭𝘺 𝘮𝘦𝘢𝘯?” before they send it to someone else.</p>
