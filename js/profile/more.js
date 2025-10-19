@@ -439,7 +439,7 @@ document.addEventListener('DOMContentLoaded', () => {
         {
             id: 3,
             title: "𝐁𝐞𝐥𝐢𝐞𝐟 𝐖𝐞 𝐁𝐞𝐥𝐢𝐞𝐯𝐞",
-            image: "post/belief%20we%20believe.png",
+            image: "post/belief we believe.png",
             date: "October 13, 2025",
             content: `
                 <p>When I was a child, I once asked a man a question that stayed with me for years: "𝐖𝐡𝐲 𝐚𝐫𝐞 𝐰𝐞 𝐚𝐥𝐰𝐚𝐲𝐬 𝐩𝐨𝐨𝐫, 𝐞𝐯𝐞𝐧 𝐰𝐡𝐞𝐧 𝐰𝐞 𝐫𝐞𝐚𝐥𝐥𝐲 𝐰𝐚𝐧𝐭 𝐭𝐨 𝐛𝐞 𝐫𝐢𝐜𝐡?"</p>
