@@ -386,7 +386,7 @@ document.addEventListener('DOMContentLoaded', () => {
         {
             id: 1,
             title: "𝗝𝘂𝗱𝗴𝗲𝗺𝗲𝗻𝘁 𝗪𝗵𝗲𝗿𝗲 𝗜 𝗕𝗲𝗴𝗮𝗻 𝘁𝗼 𝗖𝗵𝗮𝗻𝗴𝗲",
-            image: "https://eldrex.landecs.org/post/Judgment%20Where%20I%20Began%20to%20Change.png",
+            image: "post/Judgment%20Where%20I%20Began%20to%20Change.png",
             date: "October 11, 2025",
             content: `
                 <p>There was a time in my life when I usually compared myself to others. I looked at their talents, their confidence, and their achievements, and I began to doubt my own worth. I started to believe the words of people who told me I was not 𝒈𝒐𝒐𝒅 𝒆𝒏𝒐𝒖𝒈𝒉, that I was 𝒔𝒕𝒖𝒑𝒊𝒅, and 𝒆𝒗𝒆𝒏 𝒖𝒈𝒍𝒚. Those words stayed in my mind, and they made me question who I really was.</p>
@@ -403,7 +403,7 @@ document.addEventListener('DOMContentLoaded', () => {
         {
             id: 2,
             title: "𝐖𝐨𝐫𝐭𝐡 𝐚 𝐓𝐡𝐨𝐮𝐬𝐚𝐧𝐝",
-            image: "https://eldrex.landecs.org/post/worth%20a%20thousand.png",
+            image: "post/worth%20a%20thousand.png",
             date: "October 12, 2025",
             content: `
                 <p>When I was a child, I once asked my mother, "𝐍𝐚𝐧𝐚𝐲, 𝐡𝐨𝐰 𝐡𝐚𝐫𝐝 𝐢𝐭 𝐭𝐨 𝐞𝐚𝐫𝐧 𝐦𝐨𝐧𝐞𝐲?" She smiled, though I could see the sadness in her eyes. "𝐀𝐧𝐚𝐤, 𝐢𝐭'𝐬 𝐯𝐞𝐫𝐲 𝐡𝐚𝐫𝐝," she said. "𝐄𝐬𝐩𝐞𝐜𝐢𝐚𝐥𝐥𝐲 𝐟𝐨𝐫 𝐩𝐞𝐨𝐩𝐥𝐞 𝐥𝐢𝐤𝐞 𝐮𝐬 𝐰𝐡𝐨 𝐰𝐨𝐫𝐤 𝐚𝐬 𝐟𝐚𝐫𝐦𝐞𝐫𝐬." My father was nearby, busy preparing coconuts in the forest for copra. I watched him silently, wondering 𝑤ℎ𝑦 𝑖𝑡 𝑤𝑎𝑠 𝑠𝑜 ℎ𝑎𝑟𝑑 𝑤ℎ𝑒𝑛 𝑎𝑙𝑙 𝑤𝑒 𝑑𝑖𝑑 𝑤𝑎𝑠 𝑤𝑜𝑟𝑘.</p>
@@ -426,7 +426,7 @@ document.addEventListener('DOMContentLoaded', () => {
         {
             id: 3,
             title: "𝐁𝐞𝐥𝐢𝐞𝐟 𝐖𝐞 𝐁𝐞𝐥𝐢𝐞𝐯𝐞",
-            image: "https://eldrex.landecs.org/post/belief%20we%20believe.png", 
+            image: "post/belief%20we%20believe.png", 
             date: "October 13, 2025",
             content: `
                 <p>When I was a child, I once asked a man a question that stayed with me for years: "𝐖𝐡𝐲 𝐚𝐫𝐞 𝐰𝐞 𝐚𝐥𝐰𝐚𝐲𝐬 𝐩𝐨𝐨𝐫, 𝐞𝐯𝐞𝐧 𝐰𝐡𝐞𝐧 𝐰𝐞 𝐫𝐞𝐚𝐥𝐥𝐲 𝐰𝐚𝐧𝐭 𝐭𝐨 𝐛𝐞 𝐫𝐢𝐜𝐡?"</p>
@@ -446,10 +446,9 @@ document.addEventListener('DOMContentLoaded', () => {
         {
             id: 4,
             title: "The strongest people are not those who show strength in front of us, but those who fight battles we know nothing about.",
-            image: "https://eldrex.landecs.org/post/qoute01.png",
+            image: "post/qoute01.png",
             date: "October 18, 2025",
             content: `
-                    <p>"The strongest people are not those who show strength in front of us, but those who fight battles we know nothing about."</p><br>
                     <p>This quote reminds me of how strength is often misunderstood. Many people think being strong 𝒎𝒆𝒂𝒏𝒔 𝒏𝒆𝒗𝒆𝒓 𝒄𝒓𝒚𝒊𝒏𝒈, 𝒏𝒆𝒗𝒆𝒓 𝒃𝒓𝒆𝒂𝒌𝒊𝒏𝒈, 𝒐𝒓 𝒂𝒍𝒘𝒂𝒚𝒔 𝒃𝒆𝒊𝒏𝒈 𝒃𝒓𝒂𝒗𝒆 𝒊𝒏 𝒇𝒓𝒐𝒏𝒕 𝒐𝒇 𝒐𝒕𝒉𝒆𝒓𝒔. But through my own experiences, I have learned that real strength is quiet. It happens 𝒘𝒉𝒆𝒏 𝒏𝒐 𝒐𝒏𝒆 𝒊𝒔 𝒘𝒂𝒕𝒄𝒉𝒊𝒏𝒈, in the moments when you have every reason to give up, but still choose to keep going.</p>
                     <p>There were times in my life when 𝑰 𝒍𝒐𝒐𝒌𝒆𝒅 𝒇𝒊𝒏𝒆 𝒐𝒏 𝒕𝒉𝒆 𝒐𝒖𝒕𝒔𝒊𝒅𝒆, 𝒚𝒆𝒕 𝒊𝒏𝒔𝒊𝒅𝒆, 𝑰 𝒘𝒂𝒔 𝒇𝒂𝒍𝒍𝒊𝒏𝒈 𝒂𝒑𝒂𝒓𝒕. I smiled, talked, and pretended everything was okay because 𝑰 𝒅𝒊𝒅 𝒏𝒐𝒕 𝒘𝒂𝒏𝒕 𝒂𝒏𝒚𝒐𝒏𝒆 𝒕𝒐 𝒘𝒐𝒓𝒓𝒚. Those moments taught me that strength is not about how loud your courage sounds, but 𝒉𝒐𝒘 𝒕𝒓𝒖𝒍𝒚 𝒚𝒐𝒖 𝒄𝒂𝒏 𝒆𝒏𝒅𝒖𝒓𝒆 𝒘𝒊𝒕𝒉𝒐𝒖𝒕 𝒍𝒐𝒔𝒊𝒏𝒈 𝒚𝒐𝒖𝒓𝒔𝒆𝒍𝒇. Sometimes, it means holding your tears until you are alone, or standing up again after being knocked down by something no one else even noticed.</p>
                     <p>I realized that everyone has silent battles. Some fight loneliness, others deal with 𝒑𝒂𝒊𝒏 𝒕𝒉𝒂𝒕 𝒘𝒐𝒓𝒅𝒔 𝒄𝒂𝒏𝒏𝒐𝒕 𝒆𝒙𝒑𝒍𝒂𝒊𝒏. And yet, they still choose kindness, still choose to wake up and try again. That, to me, is the 𝒑𝒖𝒓𝒆𝒔𝒕 𝒇𝒐𝒓𝒎 𝒐𝒇 𝒔𝒕𝒓𝒆𝒏𝒈𝒕𝒉...continuing to live with hope 𝒆𝒗𝒆𝒏 𝒘𝒉𝒆𝒏 𝒍𝒊𝒇𝒆 𝒇𝒆𝒆𝒍𝒔 𝒅𝒊𝒇𝒇𝒊𝒄𝒖𝒍𝒕.</p>
@@ -460,7 +459,7 @@ document.addEventListener('DOMContentLoaded', () => {
         {
             id: 5,
             title: "If you have time to sit, you have time to work.",
-            image: "https://eldrex.landecs.org/post/qoute02.png",
+            image: "post/qoute02.png",
             date: "October 18, 2025",
             content: `
                     <p>There were days when I used to sit quietly, doing nothing but thinking about what I wanted to achieve. I would look at the clock, telling myself I still had time, that maybe I'd start later. But later often turned into never. It was during one of those long pauses in my life that I realized something simple yet powerful.... 𝐭𝐢𝐦𝐞 𝐧𝐞𝐯𝐞𝐫 𝐬𝐭𝐨𝐩𝐬, 𝐞𝐯𝐞𝐧 𝐰𝐡𝐞𝐧 𝐢 𝐝𝐨.</p>
@@ -468,6 +467,35 @@ document.addEventListener('DOMContentLoaded', () => {
                     <p>I learned that 𝙥𝙧𝙤𝙜𝙧𝙚𝙨𝙨 𝙘𝙤𝙢𝙚𝙨 𝙦𝙪𝙞𝙚𝙩𝙡𝙮, not from grand bursts of motivation but from the 𝒔𝒎𝒂𝒍𝒍 𝒂𝒄𝒕𝒊𝒐𝒏𝒔 𝒘𝒆 𝒕𝒂𝒌𝒆 𝒘𝒉𝒆𝒏 𝒏𝒐 𝒐𝒏𝒆 𝒆𝒍𝒔𝒆 𝒊𝒔 𝒑𝒖𝒔𝒉𝒊𝒏𝒈 𝒖𝒔. Whether it's writing, studying, or simply improving a little each day, those are the things that build our future piece by piece.</p>
                     <p>Of course, I've also come to understand that rest has its own importance. But there's a difference between resting and simply wasting time. 𝐓𝐫𝐮𝐞 𝐫𝐞𝐬𝐭 𝐠𝐢𝐯𝐞𝐬 𝐬𝐭𝐫𝐞𝐧𝐠𝐭𝐡, 𝐰𝐡𝐢𝐥𝐞 𝐢𝐝𝐥𝐞𝐧𝐞𝐬𝐬 𝐬𝐭𝐞𝐚𝐥𝐬 𝐢𝐭. So whenever I find myself sitting with too much time in my hands, I try to ask, "𝑊ℎ𝑎𝑡 𝑐𝑎𝑛 𝐼 𝑑𝑜 𝑛𝑜𝑤 𝑡ℎ𝑎𝑡 𝑤𝑖𝑙𝑙 𝑚𝑎𝑘𝑒 𝑚𝑒 𝑝𝑟𝑜𝑢𝑑 𝑙𝑎𝑡𝑒𝑟?"</p>
                     <p>This mindset changed the way I live. I no longer wait for the perfect moment to start, because there's no such thing. 𝑻𝒉𝒆 𝒑𝒆𝒓𝒇𝒆𝒄𝒕 𝒎𝒐𝒎𝒆𝒏𝒕 𝒊𝒔 𝒘𝒉𝒆𝒏𝒆𝒗𝒆𝒓 𝒚𝒐𝒖 𝒅𝒆𝒄𝒊𝒅𝒆 𝒕𝒐 𝒎𝒐𝒗𝒆. After all, if you have time to sit, you also have time to grow, to learn, and to build the life you dream of.</p>
+            `
+        },
+{
+            id: 6,
+            title: "𝐖𝐇𝐄𝐍 𝐏𝐄𝐑𝐅𝐄𝐂𝐓𝐈𝐎𝐍 𝐑𝐄𝐏𝐋𝐀𝐂𝐄𝐒 𝐄𝐌𝐎𝐓𝐈𝐎𝐍𝐒",
+            image: "post/.png",
+            date: "October 18, 2025",
+            content: `
+                    <p>Communication is supposed to be 𝒕𝒉𝒆 𝒂𝒓𝒕 𝒐𝒇 𝒖𝒏𝒅𝒆𝒓𝒔𝒕𝒂𝒏𝒅𝒊𝒏𝒈, 𝗋𝗂𝗀𝗁𝗍? It’s how we show love, care, frustration, or even nonsense when we just want to talk. But now, with artificial intelligence everywhere, it feels like people are trying to sound perfect instead of being 𝐫𝐞𝐚𝐥. Some even ask AI, “𝘋𝘰𝘦𝘢 𝘵𝘩𝘪𝘢 𝘴𝘰𝘶𝘯𝘥 𝘨𝘰𝘰𝘥?” or “𝘞𝘩𝘢𝘵 𝘥𝘰𝘦𝘴 𝘮𝘺 𝘯𝘦𝘴𝘴𝘢𝘨𝘦 𝘳𝘦𝘢𝘭𝘭𝘺 𝘮𝘦𝘢𝘯?” before they send it to someone else.</p>
+
+<p>𝑃𝑒𝑟𝑓𝑒𝑐𝑡𝑖𝑜𝑛 𝑅𝑒𝑝𝑙𝑎𝑐𝑒𝑠 𝐸𝑚𝑜𝑡𝑖𝑜𝑛</p>
+<p>It’s kind of 𝒇𝒖𝒏𝒏𝒚 𝒂𝒏𝒅 𝒂 𝒃𝒊𝒕 𝒔𝒂𝒅… how we’ve turned our emotions into drafts waiting for AI approval.</p>
+
+<p>AI helps, of course. It fixes grammar, finds better words, and makes us look smarter than we actually are. But the more it 𝒑𝒐𝒍𝒊𝒔𝒉𝒆𝒔 𝒐𝒖𝒓 𝒘𝒐𝒓𝒅𝒔, 𝒕𝒉𝒆 𝒎𝒐𝒓𝒆 𝒘𝒆 𝒍𝒐𝒔𝒆 𝒕𝒉𝒆𝒊𝒓 𝒘𝒂𝒓𝒎𝒕𝒉. 𝑰𝒕'𝒔 𝒍𝒊𝒌𝒆 𝒔𝒆𝒓𝒗𝒊𝒏𝒈 𝒂 𝒑𝒆𝒓𝒇𝒆𝒄𝒕-𝒍𝒐𝒐𝒌𝒊𝒏𝒈 𝒎𝒆𝒂𝒍 𝒕𝒉𝒂𝒕 𝒕𝒂𝒔𝒕𝒆𝒔 𝒍𝒊𝒌𝒆 𝒄𝒂𝒓𝒅𝒃𝒐𝒂𝒓𝒅. You can’t taste the emotion anymore.</p>
+
+<p>Honestly, AI has made us confident communicators... but sometimes lazy thinkers. We rely so much on it that we forget how to express 𝐰𝐡𝐚𝐭 𝐰𝐞 𝐫𝐞𝐚𝐥𝐥𝐲 𝐟𝐞𝐞𝐥. We’ve become like dolls: moving, talking, smiling... but programmed. We know how to ask, but not how to understand.</p>
+
+<p>As 𝐀𝐥𝐛𝐞𝐫𝐭 𝐄𝐢𝐧𝐬𝐭𝐞𝐢𝐧 once said, “𝘐 𝘧𝘦𝘢𝘳 𝘵𝘩𝘦 𝘥𝘢𝘺 𝘵𝘩𝘢𝘵 𝘵𝘦𝘤𝘩𝘯𝘰𝘭𝘰𝘨𝘺 𝘸𝘪𝘭𝘭 𝘴𝘶𝘳𝘱𝘢𝘴𝘴 𝘰𝘶𝘳 𝘩𝘶𝘮𝘢𝘯 𝘪𝘯𝘵𝘦𝘳𝘢𝘤𝘵𝘪𝘰𝘯. 𝘛𝘩𝘦 𝘸𝘰𝘳𝘭𝘥 𝘸𝘪𝘭𝘭 𝘩𝘢𝘷𝘦 𝘢 𝘨𝘦𝘯𝘦𝘳𝘢𝘵𝘪𝘰𝘯 𝘰𝘧 𝘪𝘥𝘪𝘰𝘵𝘴.” Maybe that day isn’t in the future anymore... it’s quietly happening now.</p>
+
+<p>There’s nothing wrong with using AI; it’s a tool. But when it starts replacing our own thoughts and emotions, that’s when the problem begins. I think the value of communication isn’t in how perfect our sentences are, but in how human they sound. Sometimes, it’s the 𝒘𝒓𝒐𝒏𝒈 𝒈𝒓𝒂𝒎𝒎𝒂𝒓 𝒕𝒉𝒂𝒕 𝒎𝒂𝒌𝒆𝒔 𝒊𝒕 𝒓𝒊𝒈𝒉𝒕... because it’s 𝐲𝐨𝐮.</p>
+
+<p>I once wrote a message with a few mistakes, and someone told me, “You should’ve used AI to fix that.” I laughed and said, “𝑾𝒉𝒚? 𝑴𝒚 𝒉𝒆𝒂𝒓𝒕 𝒅𝒐𝒆𝒔𝒏'𝒕 𝒏𝒆𝒆𝒅 𝒈𝒓𝒂𝒎𝒎𝒂𝒓 𝒄𝒐𝒓𝒓𝒆𝒄𝒕𝒊𝒐𝒏.”</p>
+
+<p>We don’t talk to be flawless; we talk to be felt.</p>
+
+<p>As I always remind myself:
+“𝐀 𝐩𝐞𝐫𝐟𝐞𝐜𝐭 𝐦𝐞𝐬𝐬𝐚𝐠𝐞 𝐦𝐚𝐲 𝐬𝐨𝐮𝐧𝐝 𝐢𝐧𝐭𝐞𝐥𝐥𝐢𝐠𝐞𝐧𝐭, 𝐛𝐮𝐭 𝐚𝐧 𝐡𝐨𝐧𝐞𝐬𝐭 𝐨𝐧𝐞 𝐬𝐨𝐮𝐧𝐝𝐬 𝐚𝐥𝐢𝐯𝐞.”</p>
+
+<p>Maybe it’s time to stop polishing every word and start 𝒇𝒆𝒆𝒍𝒊𝒏𝒈 𝒕𝒉𝒆𝒎 𝒂𝒈𝒂𝒊𝒏. After all, perfection might impress people... but emotion brings people closer.</p>
             `
         }
     ];
