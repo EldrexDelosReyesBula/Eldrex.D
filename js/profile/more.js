@@ -496,6 +496,8 @@ document.addEventListener('DOMContentLoaded', () => {
 “𝐀 𝐩𝐞𝐫𝐟𝐞𝐜𝐭 𝐦𝐞𝐬𝐬𝐚𝐠𝐞 𝐦𝐚𝐲 𝐬𝐨𝐮𝐧𝐝 𝐢𝐧𝐭𝐞𝐥𝐥𝐢𝐠𝐞𝐧𝐭, 𝐛𝐮𝐭 𝐚𝐧 𝐡𝐨𝐧𝐞𝐬𝐭 𝐨𝐧𝐞 𝐬𝐨𝐮𝐧𝐝𝐬 𝐚𝐥𝐢𝐯𝐞.”</p>
 
 <p>Maybe it’s time to stop polishing every word and start 𝒇𝒆𝒆𝒍𝒊𝒏𝒈 𝒕𝒉𝒆𝒎 𝒂𝒈𝒂𝒊𝒏. After all, perfection might impress people... but emotion brings people closer.</p>
+
+ <i>𝐂𝐂𝐓𝐎: Image not mine; credits to the rightful owner.</i>
             `
         }
     ];
