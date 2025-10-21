@@ -1,6 +1,6 @@
 /**
  * Eldrex Quotes Collection - Landecs
- * Version: 2.0.0
+ * Version: 2.1.0
  * Author: Eldrex Delos Reyes Bula
  * Publisher: Landecs
  * Website: https://eldrex.landecs.org
@@ -8,9 +8,10 @@
  */
 
 class EldrexQuotes {
-    constructor(config = {}) {
+    constructor(containerId, config = {}) {
+        this.containerId = containerId;
         this.config = {
-            containerId: config.containerId || 'eldrex-quotes',
+            containerId: containerId,
             theme: config.theme || 'light',
             autoRotate: config.autoRotate !== false,
             rotationInterval: config.rotationInterval || 8000,
@@ -30,7 +31,7 @@ class EldrexQuotes {
         this.currentIndex = 0;
         this.isInitialized = false;
         this.animationFrame = null;
-        
+
         this.init();
     }
 
@@ -40,15 +41,15 @@ class EldrexQuotes {
 
     filterQuotesData(quotes) {
         let filtered = [...quotes];
-        
+
         if (this.config.filterQuotes && Array.isArray(this.config.filterQuotes)) {
             filtered = filtered.filter((_, index) => this.config.filterQuotes.includes(index));
         }
-        
+
         if (this.config.maxQuotes && this.config.maxQuotes > 0) {
             filtered = filtered.slice(0, this.config.maxQuotes);
         }
-        
+
         return filtered;
     }
 
@@ -58,9 +59,7 @@ class EldrexQuotes {
         this.createContainer();
         this.renderQuote();
         this.bindEvents();
-        this.showConsoleRecommendations();
-        this.applyLicense();
-        
+
         if (this.config.autoRotate) {
             this.startAutoRotation();
         }
@@ -412,15 +411,20 @@ class EldrexQuotes {
     }
 
     createContainer() {
-        let container = document.getElementById(this.config.containerId);
-        
+        let container = document.getElementById(this.containerId);
+
         if (!container) {
-            container = document.createElement('div');
-            container.id = this.config.containerId;
-            document.body.appendChild(container);
+            console.warn(`Eldrex Quotes: Container with ID '${this.containerId}' not found`);
+            return;
         }
 
-        container.className = `eldrex-quotes-container ${this.config.theme === 'dark' ? 'dark' : ''}`;
+        // Check if this container is already initialized
+        if (container.classList.contains('eldrex-initialized')) {
+            console.warn(`Eldrex Quotes: Container '${this.containerId}' is already initialized`);
+            return;
+        }
+
+        container.className = `eldrex-quotes-container ${this.config.theme === 'dark' ? 'dark' : ''} eldrex-initialized`;
         this.applyCustomStyles(container);
 
         if (this.config.physics) {
@@ -439,11 +443,11 @@ class EldrexQuotes {
     createParticles(container) {
         const particles = document.createElement('div');
         particles.className = 'eldrex-particles';
-        
+
         for (let i = 0; i < 12; i++) {
             const particle = document.createElement('div');
             particle.className = 'eldrex-particle';
-            
+
             const size = Math.random() * 40 + 5;
             particle.style.width = `${size}px`;
             particle.style.height = `${size}px`;
@@ -452,10 +456,10 @@ class EldrexQuotes {
             particle.style.animation = `float ${Math.random() * 4 + 3}s ease-in-out infinite`;
             particle.style.animationDelay = `${Math.random() * 2}s`;
             particle.style.background = `var(--sage-${Math.random() > 0.5 ? '400' : '300'})`;
-            
+
             particles.appendChild(particle);
         }
-        
+
         container.appendChild(particles);
     }
 
@@ -470,8 +474,10 @@ class EldrexQuotes {
     }
 
     renderQuote() {
+        if (!this.container) return;
+
         const quote = this.quotes[this.currentIndex];
-        
+
         this.container.innerHTML = `
             <div class="eldrex-quote-content">
                 <div class="eldrex-quote-text ${this.config.animation ? 'eldrex-' + this.config.animation : ''}">
@@ -484,20 +490,20 @@ class EldrexQuotes {
                 ` : ''}
                 ${this.config.showControls ? `
                     <div class="eldrex-controls">
-                        <button class="eldrex-btn" onclick="eldrexQuotesInstance.prevQuote()" title="Previous quote">
+                        <button class="eldrex-btn" onclick="EldrexQuotesManager.getInstance('${this.containerId}').prevQuote()" title="Previous quote">
                             ${this.getButtonIcon('previous')}
                             <span>Previous</span>
                         </button>
-                        <button class="eldrex-btn" onclick="eldrexQuotesInstance.nextQuote()" title="Next quote">
+                        <button class="eldrex-btn" onclick="EldrexQuotesManager.getInstance('${this.containerId}').nextQuote()" title="Next quote">
                             ${this.getButtonIcon('next')}
                             <span>Next</span>
                         </button>
-                        <button class="eldrex-btn" onclick="eldrexQuotesInstance.randomQuote()" title="Random quote">
+                        <button class="eldrex-btn" onclick="EldrexQuotesManager.getInstance('${this.containerId}').randomQuote()" title="Random quote">
                             ${this.getButtonIcon('random')}
                             <span>Random</span>
                         </button>
                         ${this.config.enableDownload ? `
-                            <button class="eldrex-btn" onclick="eldrexQuotesInstance.downloadQuote()" title="Download quote">
+                            <button class="eldrex-btn" onclick="EldrexQuotesManager.getInstance('${this.containerId}').downloadQuote()" title="Download quote">
                                 ${this.getButtonIcon('download')}
                                 <span>Download</span>
                             </button>
@@ -510,7 +516,7 @@ class EldrexQuotes {
         setTimeout(() => {
             const quoteText = this.container.querySelector('.eldrex-quote-text');
             const controls = this.container.querySelector('.eldrex-controls');
-            
+
             if (quoteText) quoteText.classList.add('visible');
             if (controls) setTimeout(() => controls.classList.add('visible'), 300);
         }, 50);
@@ -528,12 +534,12 @@ class EldrexQuotes {
 
     randomQuote() {
         if (this.quotes.length <= 1) return;
-        
+
         let newIndex;
         do {
             newIndex = Math.floor(Math.random() * this.quotes.length);
         } while (newIndex === this.currentIndex);
-        
+
         this.currentIndex = newIndex;
         this.renderQuote();
     }
@@ -541,8 +547,10 @@ class EldrexQuotes {
     downloadQuote() {
         const quote = this.quotes[this.currentIndex];
         const content = `"${quote.text}"\n\n— ${quote.author}\n\nFrom Eldrex Quotes Collection\nLandecs · ${new Date().toLocaleDateString()}`;
-        
-        const blob = new Blob([content], { type: 'text/plain' });
+
+        const blob = new Blob([content], {
+            type: 'text/plain'
+        });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -566,22 +574,7 @@ class EldrexQuotes {
     }
 
     bindEvents() {
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                this.stopAutoRotation();
-            } else if (this.config.autoRotate) {
-                this.startAutoRotation();
-            }
-        });
-
-        document.addEventListener('keydown', (e) => {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-            
-            if (e.key === 'ArrowLeft') this.prevQuote();
-            if (e.key === 'ArrowRight') this.nextQuote();
-            if (e.key === ' ' || e.key === 'r') this.randomQuote();
-            if (e.key === 'd' && this.config.enableDownload) this.downloadQuote();
-        });
+        if (!this.container) return;
 
         let touchStartX = 0;
         this.container.addEventListener('touchstart', (e) => {
@@ -599,86 +592,25 @@ class EldrexQuotes {
         });
     }
 
-    showConsoleRecommendations() {
-        if (console && console.log) {
-            const styles = [
-                '%c🧠 Eldrex Quotes Collection %c\n' +
-                'Unique ID: ' + this.config.uniqueId + '\n' +
-                'Total Quotes: ' + this.quotes.length + '\n' +
-                'Design System: Apple Principles + Sage Palette\n' +
-                'Features: Smooth Physics · Responsive · Accessible\n\n' +
-                'Recommendations:\n' +
-                '• Ensure 4.5:1 contrast ratio for text\n' +
-                '• Test touch targets (min 44px)\n' +
-                '• Verify reduced motion preferences\n' +
-                '• Check keyboard navigation flow\n' +
-                '• Validate high contrast mode\n\n' +
-                'Powered by Landecs · Eldrex Bula 🚀',
-                'background: linear-gradient(135deg, var(--sage-600), var(--sage-400)); color: white; padding: 8px 16px; border-radius: 8px; font-weight: 600; font-family: Poppins, sans-serif;',
-                'color: var(--sage-600); font-family: Poppins, sans-serif;'
-            ];
-            console.log(...styles);
-        }
-    }
-
-    applyLicense() {
-        if (console && console.info) {
-            console.info(
-                `%cEldrex Quotes Collection v2.0.0\n` +
-                `Author: Eldrex Delos Reyes Bula\n` +
-                `Publisher: Landecs\n` +
-                `Website: https://eldrex.landecs.org\n` +
-                `Instance ID: ${this.config.uniqueId}\n` +
-                `License: LPSLQ - Attribution Required\n` +
-                `Features: ${this.quotes.length} quotes · Smooth animations · Responsive design`,
-                'color: var(--sage-600); font-weight: 600; font-family: Poppins, sans-serif;'
-            );
-        }
-    }
-
-    updateConfig(newConfig) {
-        const oldConfig = { ...this.config };
-        this.config = { ...this.config, ...newConfig };
-       
-        if (newConfig.maxQuotes !== undefined || newConfig.filterQuotes !== undefined) {
-            this.quotes = this.filterQuotesData(contentData.quotes);
-            this.currentIndex = Math.min(this.currentIndex, this.quotes.length - 1);
-        }
-        
-        if (newConfig.theme && newConfig.theme !== oldConfig.theme) {
-            this.container.classList.toggle('dark', newConfig.theme === 'dark');
-        }
-        
-        this.reinitialize();
-    }
-
-    reinitialize() {
-        this.stopAutoRotation();
-        this.renderQuote();
-        
-        if (this.config.autoRotate) {
-            this.startAutoRotation();
-        }
-    }
-
     destroy() {
         this.stopAutoRotation();
         if (this.animationFrame) {
             cancelAnimationFrame(this.animationFrame);
         }
-        
+
         if (this.container) {
-            this.container.remove();
+            this.container.classList.remove('eldrex-initialized');
+            this.container.innerHTML = '';
         }
-        
-        const styles = document.getElementById('eldrex-quotes-styles');
-        if (styles) styles.remove();
-        
+
         this.isInitialized = false;
     }
 
     getCurrentQuote() {
-        return { ...this.quotes[this.currentIndex], index: this.currentIndex };
+        return {
+            ...this.quotes[this.currentIndex],
+            index: this.currentIndex
+        };
     }
 
     getAllQuotes() {
@@ -699,7 +631,10 @@ class EldrexQuotes {
     }
 
     addQuote(text, author = "Eldrex Delos Reyes Bula") {
-        this.quotes.push({ text, author });
+        this.quotes.push({
+            text,
+            author
+        });
         this.renderQuote();
     }
 
@@ -715,194 +650,340 @@ class EldrexQuotes {
         this.config.theme = this.config.theme === 'light' ? 'dark' : 'light';
         this.container.classList.toggle('dark', this.config.theme === 'dark');
     }
+}
 
-    exportQuotes(format = 'json') {
-        const data = {
-            quotes: this.quotes,
-            meta: {
-                exported: new Date().toISOString(),
-                source: 'Eldrex Quotes Collection',
-                version: '2.0.0',
-                count: this.quotes.length
-            }
-        };
+// Manager class to handle multiple instances
+class EldrexQuotesManager {
+    constructor() {
+        this.instances = new Map();
+        this.globalStylesInjected = false;
+    }
 
-        if (format === 'json') {
-            return JSON.stringify(data, null, 2);
-        } else if (format === 'text') {
-            return this.quotes.map((q, i) => `${i + 1}. "${q.text}"\n   — ${q.author}`).join('\n\n');
+    init(containerId, config = {}) {
+        // Check if container exists
+        const container = document.getElementById(containerId);
+        if (!container) {
+            console.warn(`Eldrex Quotes: Container with ID '${containerId}' not found`);
+            return null;
         }
+
+        // Check if already initialized
+        if (this.instances.has(containerId)) {
+            console.warn(`Eldrex Quotes: Instance for container '${containerId}' already exists`);
+            return this.instances.get(containerId);
+        }
+
+        // Inject global styles if not already done
+        if (!this.globalStylesInjected) {
+            this.injectGlobalStyles();
+            this.globalStylesInjected = true;
+        }
+
+        // Create new instance
+        const instance = new EldrexQuotes(containerId, config);
+        this.instances.set(containerId, instance);
+
+        return instance;
+    }
+
+    injectGlobalStyles() {
+        if (document.getElementById('eldrex-quotes-styles')) return;
+
+        const styles = `
+            /* Global keyboard events */
+            body.eldrex-quotes-active {
+                position: relative;
+            }
+            
+            body.eldrex-quotes-active:focus {
+                outline: none;
+            }
+        `;
+
+        const styleSheet = document.createElement('style');
+        styleSheet.id = 'eldrex-quotes-global-styles';
+        styleSheet.textContent = styles;
+        document.head.appendChild(styleSheet);
+
+        // Add global keyboard listener
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+            // Get all active instances
+            const instances = Array.from(this.instances.values());
+            if (instances.length === 0) return;
+
+            // Apply to the first instance (or you can modify this logic)
+            const instance = instances[0];
+            
+            if (e.key === 'ArrowLeft') instance.prevQuote();
+            if (e.key === 'ArrowRight') instance.nextQuote();
+            if (e.key === ' ' || e.key === 'r') instance.randomQuote();
+            if (e.key === 'd' && instance.config.enableDownload) instance.downloadQuote();
+        });
+
+        // Handle page visibility
+        document.addEventListener('visibilitychange', () => {
+            const instances = Array.from(this.instances.values());
+            instances.forEach(instance => {
+                if (document.hidden) {
+                    instance.stopAutoRotation();
+                } else if (instance.config.autoRotate) {
+                    instance.startAutoRotation();
+                }
+            });
+        });
+    }
+
+    getInstance(containerId) {
+        return this.instances.get(containerId);
+    }
+
+    destroyInstance(containerId) {
+        const instance = this.instances.get(containerId);
+        if (instance) {
+            instance.destroy();
+            this.instances.delete(containerId);
+        }
+    }
+
+    destroyAll() {
+        this.instances.forEach(instance => instance.destroy());
+        this.instances.clear();
+    }
+
+    getAllInstances() {
+        return this.instances;
     }
 }
 
 const contentData = {
-    quotes: [{
-                    text: "Still Be the Blue",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "Crazy? Maybe. But I'd rather learn passionately than memorize mindlessly.",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "The more we think, the more risks we understand, but sometimes we're quick to regret instead of embracing them.",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "An old book might look like trash, yet it has the power to change lives, even if people can't see its worth at first glance.",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "Sometimes, it's people themselves who make things seem impossible.",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "Sometimes, it's curiosity that takes you to the place where you were meant to be.",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "I serve people not a company",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "Numbers may define you, but it's your will to give them meaning.",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "A man who can do what he wants, does what he wants.",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "We lose not because we have little, but because we expect nothing more.",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "Create what others can't see—because they won't know they needed it until it's here.",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "Your limits aren't real if you're the one writing the rules.",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "I never asked for attention. I just made things impossible to ignore.",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "I didn't say it. I didn't do it. But that doesn't mean I didn't mean it with all of me.",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "To own your information is not a feature—it is a right that should never be questioned.",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "Change is our only goal, and that's why we're here to create a new story and become part of history.",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "To exist is to question; to question is to live. And if all else is illusion, let my curiosity be real.",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "If life is a labyrinth of illusions, then perhaps my purpose is not to escape, but to wander. To question without answer, to search without end—this may be the only truth we ever know.",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "I'm in love—not with you, but with the essence of who you are.",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "The strongest people are not those who show strength in front of us, but those who fight battles we know nothing about.",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "The cost of convenience should never be the loss of control.",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "A mother's gift isn't measured by how it looks, but by the love that came with it.",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "A seed doesn't ask for perfect soil, nor does it wait for the perfect rain. It simply grows where it's planted, reaching for light with whatever it can find.",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "If you can question everything, you can understand anything.",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "A child's heart remembers the warmth of home, even when life keeps them far away.",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "Hoping to be enough, just as I am",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "Fly again, My blue",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "Time moves so slow, yet I blink, and everything is gone.",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "I thought I wanted freedom, but now I just want one more yesterday.",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "A road without signs is only a problem if you believe you're going somewhere.",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "A recipe followed perfectly still tastes different in someone else's hands.",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "We've waited for this day, but now we're wishing for one more.",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "Mistakes don't make you weak; refusing to correct them does.",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "Identity isn’t what you do; it’s what you stand for.",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "Money may buy what you want, but hard work teaches you who you are.",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "If you have time to sit, you have time to work.",
-                    author: "Eldrex Delos Reyes Bula"
-                },
-                {
-                    text: "Failure is not the end; it is the beginning of learning.",
-                    author: "Eldrex Delos Reyes Bula"
-                }
+    quotes: [
+        // ... (your quotes array remains exactly the same)
+        {
+            text: "Still Be the Blue",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "Crazy? Maybe. But I'd rather learn passionately than memorize mindlessly.",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "The more we think, the more risks we understand, but sometimes we're quick to regret instead of embracing them.",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "An old book might look like trash, yet it has the power to change lives, even if people can't see its worth at first glance.",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "Sometimes, it's people themselves who make things seem impossible.",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "Sometimes, it's curiosity that takes you to the place where you were meant to be.",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "I serve people not a company",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "Numbers may define you, but it's your will to give them meaning.",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "A man who can do what he wants, does what he wants.",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "We lose not because we have little, but because we expect nothing more.",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "Create what others can't see—because they won't know they needed it until it's here.",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "Your limits aren't real if you're the one writing the rules.",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "I never asked for attention. I just made things impossible to ignore.",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "I didn't say it. I didn't do it. But that doesn't mean I didn't mean it with all of me.",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "To own your information is not a feature—it is a right that should never be questioned.",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "Change is our only goal, and that's why we're here to create a new story and become part of history.",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "To exist is to question; to question is to live. And if all else is illusion, let my curiosity be real.",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "If life is a labyrinth of illusions, then perhaps my purpose is not to escape, but to wander. To question without answer, to search without end—this may be the only truth we ever know.",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "I'm in love—not with you, but with the essence of who you are.",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "The strongest people are not those who show strength in front of us, but those who fight battles we know nothing about.",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "The cost of convenience should never be the loss of control.",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "A mother's gift isn't measured by how it looks, but by the love that came with it.",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "A seed doesn't ask for perfect soil, nor does it wait for the perfect rain. It simply grows where it's planted, reaching for light with whatever it can find.",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "If you can question everything, you can understand anything.",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "A child's heart remembers the warmth of home, even when life keeps them far away.",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "Hoping to be enough, just as I am",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "Fly again, My blue",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "Time moves so slow, yet I blink, and everything is gone.",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "I thought I wanted freedom, but now I just want one more yesterday.",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "A road without signs is only a problem if you believe you're going somewhere.",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "A recipe followed perfectly still tastes different in someone else's hands.",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "We've waited for this day, but now we're wishing for one more.",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "Mistakes don't make you weak; refusing to correct them does.",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "Identity isn't what you do; it's what you stand for.",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "Money may buy what you want, but hard work teaches you who you are.",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "If you have time to sit, you have time to work.",
+            author: "Eldrex Delos Reyes Bula"
+        },
+        {
+            text: "Failure is not the end; it is the beginning of learning.",
+            author: "Eldrex Delos Reyes Bula"
+        }
     ]
 };
 
-let eldrexQuotesInstance;
+// Create global manager instance
+const eldrexQuotesManager = new EldrexQuotesManager();
 
+// Global initialization function
 function initEldrexQuotes(config = {}) {
+    if (typeof document === 'undefined') return null;
+
+    const initializeContainer = (containerId) => {
+        if (!containerId) {
+            console.warn('Eldrex Quotes: No containerId specified');
+            return null;
+        }
+
+        return eldrexQuotesManager.init(containerId, config);
+    };
+
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
-            eldrexQuotesInstance = new EldrexQuotes(config);
+            if (config.containerId) {
+                return initializeContainer(config.containerId);
+            }
         });
     } else {
-        eldrexQuotesInstance = new EldrexQuotes(config);
+        if (config.containerId) {
+            return initializeContainer(config.containerId);
+        }
     }
-    
-    return eldrexQuotesInstance;
+
+    return null;
 }
 
-initEldrexQuotes();
+// Auto-initialize containers with data attributes
+function autoInitializeEldrexQuotes() {
+    const containers = document.querySelectorAll('[data-eldrex-quotes]');
+    containers.forEach(container => {
+        const containerId = container.id;
+        if (!containerId) {
+            console.warn('Eldrex Quotes: Container must have an ID for auto-initialization');
+            return;
+        }
 
+        const config = {
+            theme: container.getAttribute('data-theme') || 'light',
+            autoRotate: container.getAttribute('data-auto-rotate') !== 'false',
+            showAuthor: container.getAttribute('data-show-author') !== 'false',
+            showControls: container.getAttribute('data-show-controls') !== 'false'
+        };
+
+        eldrexQuotesManager.init(containerId, config);
+    });
+}
+
+// Initialize on DOM ready
+if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', autoInitializeEldrexQuotes);
+    } else {
+        autoInitializeEldrexQuotes();
+    }
+}
+
+// Export for module systems
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { EldrexQuotes, initEldrexQuotes, contentData };
+    module.exports = {
+        EldrexQuotes,
+        EldrexQuotesManager,
+        initEldrexQuotes,
+        contentData,
+        eldrexQuotesManager
+    };
 }
+
+// Global access
+window.EldrexQuotesManager = EldrexQuotesManager;
+window.initEldrexQuotes = initEldrexQuotes;
+window.eldrexQuotesManager = eldrexQuotesManager;
