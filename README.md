@@ -4,7 +4,7 @@
 
 [![License](https://img.shields.io/badge/License-LPSL%20GitHub-blue)](LICENSE.txt)  
 [![Website](https://img.shields.io/badge/Website-eldrex.landecs.org-brightgreen)](https://eldrex.landecs.org)
-[![Licensor](https://img.shields.io/badge/Licensor-www.landecs.org-brightgreen)](https://www.landecs.org)
+[![Licensor](https://img.shields.io/badge/Licensor-www.landecs.org-sage)](https://www.landecs.org)
 
 ## 🌐 Overview
 
