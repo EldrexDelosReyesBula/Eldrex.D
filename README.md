@@ -1,8 +1,9 @@
+![Eldrex.D Banner](https://eldrex.landecs.org/squad/eldrex02.jpg)
+
 # 🚀 Eldrex.D
 
 [![License](https://img.shields.io/badge/License-LPSL%20GitHub-blue)](LICENSE.txt)  
 [![Website](https://img.shields.io/badge/Website-eldrex.landecs.org-brightgreen)](https://eldrex.landecs.org)
-
 
 ## 🌐 Overview
 
