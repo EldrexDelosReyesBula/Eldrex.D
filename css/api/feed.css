@@ -217,11 +217,14 @@ main {
 
 .comment-text {
     line-height: 1.6;
+    word-wrap: break-word;
+    white-space: pre-wrap;
 }
 
 .comment-text.blurred {
     filter: blur(5px);
     user-select: none;
+    -webkit-user-select: none;
 }
 
 .sensitive-warning {
@@ -236,6 +239,11 @@ main {
     color: var(--text-secondary);
     display: none;
     z-index: 10;
+    text-align: center;
+}
+
+.comment-text.blurred + .sensitive-warning {
+    display: block;
 }
 
 .comment-actions {
@@ -258,7 +266,7 @@ main {
     border-radius: 0.5rem;
 }
 
-.action-btn:hover {
+.action-btn:hover:not(:disabled) {
     background-color: var(--bg-secondary);
     color: var(--primary);
 }
@@ -304,6 +312,7 @@ main {
     resize: none;
     max-height: 120px;
     transition: var(--transition-all);
+    background-color: var(--card-bg);
 }
 
 .comment-input:focus {
@@ -325,6 +334,12 @@ main {
     color: var(--text-primary);
     font-family: 'Poppins', sans-serif;
     min-width: 140px;
+    cursor: pointer;
+}
+
+.category-select:focus {
+    outline: none;
+    border-color: var(--primary);
 }
 
 .send-btn {
@@ -339,9 +354,10 @@ main {
     justify-content: center;
     cursor: pointer;
     transition: var(--transition-all);
+    flex-shrink: 0;
 }
 
-.send-btn:hover {
+.send-btn:hover:not(:disabled) {
     background-color: var(--primary-hover);
     transform: scale(1.05);
 }
@@ -388,6 +404,13 @@ main {
     font-size: 1.2rem;
     color: var(--text-secondary);
     cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    transition: var(--transition-all);
+}
+
+.close-sheet:hover {
+    background-color: var(--bg-secondary);
 }
 
 .sheet-options {
@@ -404,6 +427,10 @@ main {
     border-radius: 0.8rem;
     transition: var(--transition-all);
     cursor: pointer;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
 }
 
 .sheet-option:hover {
@@ -419,6 +446,7 @@ main {
     align-items: center;
     justify-content: center;
     color: var(--primary);
+    flex-shrink: 0;
 }
 
 .option-text {
@@ -449,11 +477,13 @@ main {
 .banner-text {
     flex: 1;
     margin-right: 1rem;
+    font-size: 0.9rem;
 }
 
 .banner-actions {
     display: flex;
     gap: 0.8rem;
+    flex-shrink: 0;
 }
 
 .banner-btn {
@@ -463,6 +493,7 @@ main {
     font-weight: 500;
     cursor: pointer;
     transition: var(--transition-all);
+    font-size: 0.9rem;
 }
 
 .banner-btn.primary {
@@ -478,6 +509,7 @@ main {
 
 .banner-btn:hover {
     opacity: 0.9;
+    transform: translateY(-1px);
 }
 
 /* Skeleton Loading */
@@ -568,6 +600,7 @@ main {
     max-width: 500px;
     margin-bottom: 2rem;
     color: var(--text-secondary);
+    line-height: 1.6;
 }
 
 .security-btn {
@@ -583,6 +616,7 @@ main {
 
 .security-btn:hover {
     background-color: var(--primary-hover);
+    transform: translateY(-2px);
 }
 
 /* Toast Notifications */
@@ -600,6 +634,7 @@ main {
     z-index: 10000;
     transform: translateX(150%);
     transition: var(--transition-all);
+    max-width: 400px;
 }
 
 .toast.active {
@@ -620,6 +655,7 @@ main {
 
 .toast-icon {
     font-size: 1.2rem;
+    flex-shrink: 0;
 }
 
 .toast.success .toast-icon {
@@ -636,6 +672,55 @@ main {
 
 .toast-message {
     font-weight: 500;
+    font-size: 0.9rem;
+}
+
+/* Link Preview */
+.link-preview {
+    margin-top: 0.8rem;
+    border: 1px solid var(--bg-tertiary);
+    border-radius: 0.8rem;
+    overflow: hidden;
+    background: var(--card-bg);
+}
+
+.link-preview-content {
+    padding: 0.8rem;
+}
+
+.link-preview-title {
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+    color: var(--text-primary);
+}
+
+.link-preview-description {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.3rem;
+}
+
+.link-preview-url {
+    font-size: 0.7rem;
+    color: var(--primary);
+}
+
+/* No Comments State */
+.no-comments {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-secondary);
+}
+
+.no-comments i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.no-comments h3 {
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
 }
 
 /* Responsive Design */
@@ -643,6 +728,7 @@ main {
     .input-container {
         flex-direction: column;
         align-items: stretch;
+        gap: 0.8rem;
     }
     
     .category-select {
@@ -667,9 +753,19 @@ main {
         text-align: center;
     }
     
+    .banner-text {
+        margin-right: 0;
+    }
+    
     .banner-actions {
         width: 100%;
         justify-content: center;
+    }
+    
+    .toast {
+        left: 1rem;
+        right: 1rem;
+        max-width: none;
     }
 }
 
@@ -687,7 +783,54 @@ main {
         padding: 1rem;
     }
     
-    .banner-text {
-        margin-right: 0;
+    .categories {
+        gap: 0.5rem;
+    }
+    
+    .category {
+        padding: 0.4rem 1rem;
+        font-size: 0.8rem;
+    }
+}
+
+/* Loading States */
+.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* Focus states for accessibility */
+button:focus-visible,
+.category:focus-visible,
+.comment-input:focus-visible,
+.category-select:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .comment-card {
+        border: 1px solid var(--sage-300);
+    }
+    
+    .action-btn:hover {
+        background-color: var(--sage-200);
     }
 }
