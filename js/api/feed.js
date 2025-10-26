@@ -1,541 +1,676 @@
-// Global JavaScript for Eldrex Comments Platform
-
-// DOM Elements
-const commentsContainer = document.getElementById('commentsContainer');
-const commentInput = document.getElementById('commentInput');
-const categorySelect = document.getElementById('categorySelect');
-const sendBtn = document.getElementById('sendBtn');
-const categories = document.querySelectorAll('.category');
-const settingsBtn = document.getElementById('settingsBtn');
-const bottomSheet = document.getElementById('bottomSheet');
-const closeSheet = document.getElementById('closeSheet');
-const backBtn = document.getElementById('backBtn');
-const toast = document.getElementById('toast');
-const toastMessage = document.getElementById('toastMessage');
-const closeToast = document.getElementById('closeToast');
-const nicknameModal = document.getElementById('nicknameModal');
-const closeNicknameModal = document.getElementById('closeNicknameModal');
-const cancelNickname = document.getElementById('cancelNickname');
-const saveNickname = document.getElementById('saveNickname');
-const nicknameInput = document.getElementById('nicknameInput');
-const reportModal = document.getElementById('reportModal');
-const closeReportModal = document.getElementById('closeReportModal');
-const cancelReport = document.getElementById('cancelReport');
-const submitReport = document.getElementById('submitReport');
-const reportReason = document.getElementById('reportReason');
-const reportDetails = document.getElementById('reportDetails');
-
-// Current state
-let currentCategory = 'all';
-let comments = [];
-let userNickname = localStorage.getItem('userNickname') || '';
-let commentToReport = null;
-let unsubscribeComments = null;
-
-// Security measures
-document.addEventListener('DOMContentLoaded', function() {
-    // Prevent right-click
-    document.addEventListener('contextmenu', function(e) {
-        e.preventDefault();
-    });
-    
-    // Prevent keyboard shortcuts for dev tools
-    document.addEventListener('keydown', function(e) {
-        // Disable F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
-        if (e.key === 'F12' || 
-            (e.ctrlKey && e.shiftKey && e.key === 'I') || 
-            (e.ctrlKey && e.shiftKey && e.key === 'J') || 
-            (e.ctrlKey && e.key === 'u')) {
-            e.preventDefault();
-            showSecurityNotice();
-        }
-    });
-    
-    // Check if page is being embedded
-    if (window.self !== window.top) {
-        showSecurityNotice();
-        setTimeout(() => {
-            window.top.location.href = 'https://eldrex.landecs.org/404';
-        }, 3000);
+// Global Feed Management
+class EldrexFeed {
+    constructor() {
+        this.currentUser = null;
+        this.isParticipating = false;
+        this.comments = [];
+        this.currentCategory = 'all';
+        this.init();
     }
-    
-    // Check for local or HTTP access
-    if (window.location.protocol === 'http:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        showSecurityNotice();
-        setTimeout(() => {
-            window.location.href = 'https://eldrex.landecs.org/404';
-        }, 3000);
+
+    async init() {
+        // Initialize security checks
+        this.setupSecurity();
+        
+        // Initialize Firebase
+        await this.initializeFirebase();
+        
+        // Set up event listeners
+        this.setupEventListeners();
+        
+        // Load initial data
+        this.loadComments();
+        
+        // Show user banner if needed
+        this.checkUserParticipation();
     }
-    
-    function showSecurityNotice() {
-        document.getElementById('securityNotice').style.display = 'flex';
-    }
-});
 
-// Initialize the app
-function init() {
-    console.log('Initializing Eldrex platform...');
-    setupEventListeners();
-    
-    // Wait for Firebase to initialize before loading comments
-    setTimeout(() => {
-        if (typeof EldrexAPI !== 'undefined') {
-            loadComments();
-            showSkeletonLoading();
-        } else {
-            console.error('EldrexAPI not loaded');
-            showToast('Error loading platform', 'error');
-        }
-    }, 1000);
-    
-    // Check if user needs to set nickname
-    if (!localStorage.getItem('nicknameSet')) {
-        setTimeout(() => {
-            nicknameModal.classList.add('active');
-        }, 1500);
-    }
-}
-
-// Set up event listeners
-function setupEventListeners() {
-    console.log('Setting up event listeners...');
-    
-    // Category filter
-    categories.forEach(category => {
-        category.addEventListener('click', () => {
-            categories.forEach(c => c.classList.remove('active'));
-            category.classList.add('active');
-            currentCategory = category.dataset.category;
-            loadComments();
-        });
-    });
-
-    // Comment input
-    commentInput.addEventListener('input', () => {
-        sendBtn.disabled = commentInput.value.trim() === '';
-    });
-
-    // Send comment
-    sendBtn.addEventListener('click', addComment);
-    commentInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            if (!sendBtn.disabled) {
-                addComment();
+    setupSecurity() {
+        const allowedDomain = 'eldrex.landecs.org';
+        const currentDomain = window.location.hostname;
+        
+        // Check if not running on the allowed domain
+        if (currentDomain !== allowedDomain && 
+            currentDomain !== 'localhost' && 
+            !currentDomain.includes('127.0.0.1')) {
+            
+            // Show security notice
+            document.getElementById('securityNotice').classList.add('active');
+            
+            // Prevent right-click
+            document.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                return false;
+            });
+            
+            // Prevent keyboard shortcuts for dev tools
+            document.addEventListener('keydown', function(e) {
+                // Disable F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
+                if (e.key === 'F12' || 
+                    (e.ctrlKey && e.shiftKey && e.key === 'I') || 
+                    (e.ctrlKey && e.shiftKey && e.key === 'J') || 
+                    (e.ctrlKey && e.key === 'u')) {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+            
+            // Redirect attempts to embed or iframe
+            if (window.self !== window.top) {
+                window.top.location.href = 'https://eldrex.landecs.org/404';
             }
         }
-    });
-
-    // Settings
-    settingsBtn.addEventListener('click', () => {
-        bottomSheet.classList.add('active');
-    });
-
-    closeSheet.addEventListener('click', () => {
-        bottomSheet.classList.remove('active');
-    });
-
-    // Back button
-    backBtn.addEventListener('click', () => {
-        if (document.referrer) {
-            window.history.back();
-        } else {
-            window.location.href = 'https://eldrex.landecs.org';
-        }
-    });
-
-    // Settings options
-    document.getElementById('nicknameOption').addEventListener('click', () => {
-        nicknameInput.value = userNickname;
-        nicknameModal.classList.add('active');
-        bottomSheet.classList.remove('active');
-    });
-
-    document.getElementById('filterOption').addEventListener('click', () => {
-        showToast('Content filtering is enabled for sensitive words', 'info');
-        bottomSheet.classList.remove('active');
-    });
-
-    document.getElementById('privacyOption').addEventListener('click', () => {
-        window.open('https://eldrex.landecs.org/privacy', '_blank');
-        bottomSheet.classList.remove('active');
-    });
-
-    document.getElementById('aboutOption').addEventListener('click', () => {
-        window.open('https://eldrex.landecs.org/about', '_blank');
-        bottomSheet.classList.remove('active');
-    });
-
-    // Toast
-    closeToast.addEventListener('click', () => {
-        toast.classList.remove('active');
-    });
-
-    // Nickname modal
-    closeNicknameModal.addEventListener('click', () => {
-        nicknameModal.classList.remove('active');
-    });
-
-    cancelNickname.addEventListener('click', () => {
-        nicknameModal.classList.remove('active');
-    });
-
-    saveNickname.addEventListener('click', () => {
-        userNickname = nicknameInput.value.trim();
-        localStorage.setItem('userNickname', userNickname);
-        localStorage.setItem('nicknameSet', 'true');
-        nicknameModal.classList.remove('active');
-        showToast('Nickname saved successfully', 'success');
-    });
-
-    // Report modal
-    closeReportModal.addEventListener('click', () => {
-        reportModal.classList.remove('active');
-    });
-
-    cancelReport.addEventListener('click', () => {
-        reportModal.classList.remove('active');
-    });
-
-    submitReport.addEventListener('click', () => {
-        if (commentToReport) {
-            submitReportComment(commentToReport, reportReason.value, reportDetails.value);
-            reportModal.classList.remove('active');
-            commentToReport = null;
-        }
-    });
-
-    // Close modals when clicking outside
-    document.addEventListener('click', (e) => {
-        if (e.target.classList.contains('modal')) {
-            e.target.classList.remove('active');
-        }
-    });
-}
-
-// Load comments using API
-function loadComments() {
-    console.log('Loading comments for category:', currentCategory);
-    
-    // Unsubscribe from previous listener
-    if (unsubscribeComments) {
-        unsubscribeComments();
     }
-    
-    // Check if EldrexAPI is available
-    if (typeof EldrexAPI === 'undefined') {
-        console.error('EldrexAPI is not defined');
-        showToast('Error loading comments', 'error');
-        hideSkeletonLoading();
-        return;
-    }
-    
-    // Set up real-time listener
-    try {
-        unsubscribeComments = EldrexAPI.setupCommentsListener(currentCategory, (comments, error) => {
-            if (error) {
-                console.error('Error loading comments:', error);
-                showToast('Error loading comments', 'error');
-                hideSkeletonLoading();
-                return;
+
+    async initializeFirebase() {
+        try {
+            // Firebase configuration will be loaded from feed_api.js
+            if (typeof firebaseConfig === 'undefined') {
+                throw new Error('Firebase configuration not found');
             }
             
-            window.comments = comments;
-            hideSkeletonLoading();
-            renderComments();
-        });
-    } catch (error) {
-        console.error('Error setting up comments listener:', error);
-        showToast('Error loading comments', 'error');
-        hideSkeletonLoading();
+            firebase.initializeApp(firebaseConfig);
+            this.db = firebase.firestore();
+            this.auth = firebase.auth();
+            
+            // Set up anonymous authentication
+            await this.setupAnonymousAuth();
+            
+        } catch (error) {
+            console.error('Firebase initialization failed:', error);
+            this.showToast('Failed to initialize platform', 'error');
+        }
     }
-}
 
-// Render comments based on current filter
-function renderComments() {
-    console.log('Rendering comments:', comments?.length);
-    commentsContainer.innerHTML = '';
-    
-    if (!comments || comments.length === 0) {
-        commentsContainer.innerHTML = `
-            <div class="no-comments" style="text-align: center; padding: 2rem; color: var(--text-secondary);">
-                <p>No comments in this category yet. Be the first to share your thoughts!</p>
+    async setupAnonymousAuth() {
+        try {
+            // Sign in anonymously
+            const userCredential = await this.auth.signInAnonymously();
+            this.currentUser = userCredential.user;
+            
+            // Generate anonymous user data
+            await this.generateAnonymousProfile();
+            
+        } catch (error) {
+            console.error('Anonymous auth failed:', error);
+            this.showToast('Authentication failed', 'error');
+        }
+    }
+
+    async generateAnonymousProfile() {
+        const userId = this.currentUser.uid;
+        const userRef = this.db.collection('anonymousUsers').doc(userId);
+        
+        const userDoc = await userRef.get();
+        
+        if (!userDoc.exists) {
+            // Generate random anonymous profile
+            const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            const randomLetter = letters[Math.floor(Math.random() * letters.length)];
+            const randomName = 'AnonymousUser' + Math.floor(Math.random() * 10000);
+            
+            await userRef.set({
+                avatarLetter: randomLetter,
+                displayName: randomName,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                lastActive: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
+    }
+
+    setupEventListeners() {
+        // Back button
+        document.getElementById('backBtn').addEventListener('click', () => {
+            window.history.back();
+        });
+        
+        // Settings button
+        document.getElementById('settingsBtn').addEventListener('click', () => {
+            document.getElementById('bottomSheet').classList.add('active');
+        });
+        
+        // Close bottom sheet
+        document.getElementById('closeSheet').addEventListener('click', () => {
+            document.getElementById('bottomSheet').classList.remove('active');
+        });
+        
+        // Category selection
+        document.querySelectorAll('.category').forEach(category => {
+            category.addEventListener('click', () => {
+                document.querySelectorAll('.category').forEach(c => c.classList.remove('active'));
+                category.classList.add('active');
+                this.currentCategory = category.dataset.category;
+                this.filterCommentsByCategory(this.currentCategory);
+            });
+        });
+        
+        // Send comment
+        document.getElementById('sendBtn').addEventListener('click', () => this.postComment());
+        document.getElementById('commentInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this.postComment();
+            }
+        });
+        
+        // Auto-resize textarea
+        document.getElementById('commentInput').addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+        
+        // Banner actions
+        document.getElementById('confirmParticipation').addEventListener('click', () => {
+            this.confirmParticipation();
+        });
+        
+        document.getElementById('exploreOnly').addEventListener('click', () => {
+            this.setExploreOnlyMode();
+        });
+        
+        // Security redirect
+        document.getElementById('securityRedirect').addEventListener('click', () => {
+            window.location.href = 'https://eldrex.landecs.org';
+        });
+        
+        // Settings options
+        document.getElementById('changeNickname').addEventListener('click', () => {
+            this.changeNickname();
+        });
+        
+        document.getElementById('filterContent').addEventListener('click', () => {
+            this.showContentFilters();
+        });
+        
+        document.getElementById('privacyInfo').addEventListener('click', () => {
+            this.showPrivacyInfo();
+        });
+        
+        document.getElementById('reportProblem').addEventListener('click', () => {
+            this.reportProblem();
+        });
+    }
+
+    checkUserParticipation() {
+        const userConfirmed = localStorage.getItem('userConfirmed');
+        if (!userConfirmed) {
+            setTimeout(() => {
+                document.getElementById('userBanner').classList.add('active');
+            }, 1000);
+        } else {
+            this.isParticipating = true;
+        }
+    }
+
+    confirmParticipation() {
+        localStorage.setItem('userConfirmed', 'true');
+        document.getElementById('userBanner').classList.remove('active');
+        this.isParticipating = true;
+        this.showToast('Welcome! You can now participate anonymously.', 'success');
+    }
+
+    setExploreOnlyMode() {
+        document.getElementById('userBanner').classList.remove('active');
+        
+        // Disable interaction elements
+        document.getElementById('commentInput').disabled = true;
+        document.getElementById('commentInput').placeholder = "Sign in to comment...";
+        document.getElementById('sendBtn').disabled = true;
+        
+        document.querySelectorAll('.action-btn').forEach(btn => {
+            btn.disabled = true;
+        });
+        
+        this.showToast('Explore mode activated. You can view but not interact.', 'warning');
+    }
+
+    async loadComments() {
+        try {
+            this.showSkeletonLoading();
+            
+            const commentsRef = this.db.collection('comments')
+                .where('status', '==', 'approved')
+                .orderBy('createdAt', 'desc')
+                .limit(50);
+            
+            // Real-time listener
+            commentsRef.onSnapshot(snapshot => {
+                this.comments = [];
+                snapshot.forEach(doc => {
+                    this.comments.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+                
+                this.renderComments();
+                this.hideSkeletonLoading();
+                
+            }, error => {
+                console.error('Error loading comments:', error);
+                this.hideSkeletonLoading();
+                this.showToast('Failed to load comments', 'error');
+            });
+            
+        } catch (error) {
+            console.error('Error loading comments:', error);
+            this.hideSkeletonLoading();
+            this.showToast('Failed to load comments', 'error');
+        }
+    }
+
+    showSkeletonLoading() {
+        const container = document.getElementById('commentsContainer');
+        container.innerHTML = `
+            <div class="skeleton-comment">
+                <div class="comment-header">
+                    <div class="user-info">
+                        <div class="skeleton skeleton-avatar"></div>
+                        <div class="user-details">
+                            <div class="skeleton skeleton-text short"></div>
+                            <div class="skeleton skeleton-text medium"></div>
+                        </div>
+                    </div>
+                    <div class="skeleton skeleton-text short"></div>
+                </div>
+                <div class="comment-content">
+                    <div class="skeleton skeleton-text long"></div>
+                    <div class="skeleton skeleton-text long"></div>
+                    <div class="skeleton skeleton-text medium"></div>
+                </div>
+                <div class="comment-actions">
+                    <div class="skeleton skeleton-text short"></div>
+                    <div class="skeleton skeleton-text short"></div>
+                    <div class="skeleton skeleton-text short"></div>
+                </div>
+            </div>
+            <div class="skeleton-comment">
+                <div class="comment-header">
+                    <div class="user-info">
+                        <div class="skeleton skeleton-avatar"></div>
+                        <div class="user-details">
+                            <div class="skeleton skeleton-text short"></div>
+                            <div class="skeleton skeleton-text medium"></div>
+                        </div>
+                    </div>
+                    <div class="skeleton skeleton-text short"></div>
+                </div>
+                <div class="comment-content">
+                    <div class="skeleton skeleton-text long"></div>
+                    <div class="skeleton skeleton-text long"></div>
+                    <div class="skeleton skeleton-text medium"></div>
+                </div>
+                <div class="comment-actions">
+                    <div class="skeleton skeleton-text short"></div>
+                    <div class="skeleton skeleton-text short"></div>
+                    <div class="skeleton skeleton-text short"></div>
+                </div>
             </div>
         `;
-        return;
     }
-    
-    comments.forEach(comment => {
-        const commentElement = createCommentElement(comment);
-        commentsContainer.appendChild(commentElement);
-    });
-}
 
-// Create a comment element
-function createCommentElement(comment) {
-    const commentElement = document.createElement('div');
-    commentElement.className = 'comment-card';
-    commentElement.dataset.id = comment.id;
-    
-    // Check for sensitive content
-    const hasSensitiveContent = comment.sensitive;
-    const contentClass = hasSensitiveContent ? 'sensitive-content blurred' : '';
-    const warningHtml = hasSensitiveContent ? 
-        '<div class="warning">Sensitive content - Click to reveal</div>' : '';
-    
-    // Generate avatar color based on nickname
-    const avatarColor = stringToColor(comment.nickname || 'Anonymous');
-    const displayName = comment.nickname || 'Anonymous';
-    
-    // Format timestamp
-    const timestamp = formatTimestamp(comment.timestamp);
-    
-    // Check if current user liked this comment
-    const userId = getUserId();
-    const userLiked = comment.userLikes && comment.userLikes.includes(userId);
-    
-    commentElement.innerHTML = `
-        <div class="comment-header">
-            <div class="user-info">
-                <div class="user-avatar" style="background-color: ${avatarColor}">
-                    ${displayName.charAt(0).toUpperCase()}
+    hideSkeletonLoading() {
+        // Skeleton will be replaced when comments are rendered
+    }
+
+    renderComments() {
+        const container = document.getElementById('commentsContainer');
+        const filteredComments = this.currentCategory === 'all' 
+            ? this.comments 
+            : this.comments.filter(comment => comment.category === this.currentCategory);
+        
+        if (filteredComments.length === 0) {
+            container.innerHTML = `
+                <div class="no-comments">
+                    <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                        <i class="fas fa-comments" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                        <h3>No comments yet</h3>
+                        <p>Be the first to share your thoughts!</p>
+                    </div>
                 </div>
-                <div class="user-details">
-                    <div class="user-nickname">${displayName}</div>
-                    <div class="comment-category">${formatCategory(comment.category)}</div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = filteredComments.map(comment => this.createCommentElement(comment)).join('');
+        
+        // Re-attach event listeners to action buttons
+        this.attachActionListeners();
+    }
+
+    createCommentElement(comment) {
+        const timestamp = comment.createdAt ? this.formatTimestamp(comment.createdAt.toDate()) : 'Recently';
+        const isSensitive = this.checkSensitiveContent(comment.content);
+        
+        return `
+            <div class="comment-card" data-comment-id="${comment.id}">
+                <div class="comment-header">
+                    <div class="user-info">
+                        <div class="avatar">${comment.userAvatar || 'A'}</div>
+                        <div class="user-details">
+                            <div class="username">${comment.userName || 'AnonymousUser'}</div>
+                            <div class="timestamp">${timestamp}</div>
+                        </div>
+                    </div>
+                    <div class="category-tag">${this.formatCategory(comment.category)}</div>
                 </div>
+                <div class="comment-content">
+                    <div class="comment-text ${isSensitive ? 'blurred' : ''}">${comment.content}</div>
+                    ${isSensitive ? '<div class="sensitive-warning"><i class="fas fa-eye-slash"></i> Sensitive content</div>' : ''}
+                </div>
+                <div class="comment-actions">
+                    <button class="action-btn like-btn" data-comment-id="${comment.id}">
+                        <i class="${comment.userLiked ? 'fas' : 'far'} fa-heart"></i>
+                        <span>${comment.likes || 0}</span>
+                    </button>
+                    <button class="action-btn reply-btn" data-comment-id="${comment.id}">
+                        <i class="far fa-comment"></i>
+                        <span>${comment.replyCount || 0}</span>
+                    </button>
+                    <button class="action-btn report-btn" data-comment-id="${comment.id}">
+                        <i class="far fa-flag"></i>
+                        <span>Report</span>
+                    </button>
+                </div>
+                ${comment.replies && comment.replies.length > 0 ? this.renderReplies(comment.replies) : ''}
             </div>
-            <div class="comment-time">${timestamp}</div>
-        </div>
-        <div class="comment-content ${contentClass}" ${hasSensitiveContent ? 'onclick="toggleSensitiveContent(this)"' : ''}>
-            ${comment.content}
-            ${warningHtml}
-        </div>
-        <div class="comment-actions">
-            <button class="action-btn ${userLiked ? 'active' : ''}" onclick="toggleLike('${comment.id}')">
-                <i class="fas fa-thumbs-up"></i>
-                <span>Like (${comment.likes || 0})</span>
-            </button>
-            <button class="action-btn" onclick="toggleReplyForm('${comment.id}')">
-                <i class="fas fa-reply"></i>
-                <span>Reply</span>
-            </button>
-            <button class="action-btn" onclick="openReportModal('${comment.id}')">
-                <i class="fas fa-flag"></i>
-                <span>Report</span>
-            </button>
-        </div>
-        ${comment.replies && comment.replies.length > 0 ? `
+        `;
+    }
+
+    renderReplies(replies) {
+        return `
             <div class="replies-container">
-                ${comment.replies.map(reply => `
-                    <div class="comment-card" style="background-color: var(--quote-bg);">
+                ${replies.map(reply => `
+                    <div class="reply-card">
                         <div class="comment-header">
                             <div class="user-info">
-                                <div class="user-avatar" style="background-color: ${stringToColor(reply.nickname || 'Anonymous')}">
-                                    ${(reply.nickname || 'Anonymous').charAt(0).toUpperCase()}
-                                </div>
+                                <div class="avatar">${reply.userAvatar || 'A'}</div>
                                 <div class="user-details">
-                                    <div class="user-nickname">${reply.nickname || 'Anonymous'}</div>
+                                    <div class="username">${reply.userName || 'AnonymousUser'}</div>
+                                    <div class="timestamp">${this.formatTimestamp(reply.createdAt.toDate())}</div>
                                 </div>
                             </div>
-                            <div class="comment-time">${formatTimestamp(reply.timestamp)}</div>
                         </div>
-                        <div class="comment-content ${reply.sensitive ? 'sensitive-content blurred' : ''}" ${reply.sensitive ? 'onclick="toggleSensitiveContent(this)"' : ''}>
-                            ${reply.content}
-                            ${reply.sensitive ? '<div class="warning">Sensitive content - Click to reveal</div>' : ''}
+                        <div class="comment-content">
+                            <div class="comment-text">${reply.content}</div>
+                        </div>
+                        <div class="comment-actions">
+                            <button class="action-btn like-btn" data-reply-id="${reply.id}">
+                                <i class="far fa-heart"></i>
+                                <span>${reply.likes || 0}</span>
+                            </button>
+                            <button class="action-btn report-btn" data-reply-id="${reply.id}">
+                                <i class="far fa-flag"></i>
+                            </button>
                         </div>
                     </div>
                 `).join('')}
             </div>
-        ` : ''}
-        <div class="reply-form" id="replyForm-${comment.id}" style="display: none;">
-            <textarea class="reply-input" id="replyInput-${comment.id}" placeholder="Write a reply..."></textarea>
-            <button class="send-reply-btn" onclick="addReply('${comment.id}')">
-                <i class="fas fa-paper-plane"></i>
-            </button>
-        </div>
-    `;
-    
-    return commentElement;
-}
+        `;
+    }
 
-// Add a new comment using API
-async function addComment() {
-    const content = commentInput.value.trim();
-    if (!content) return;
-    
-    const category = categorySelect.value;
-    
-    const commentData = {
-        content: content,
-        category: category,
-        nickname: userNickname
-    };
-    
-    try {
-        await EldrexAPI.addComment(commentData);
+    attachActionListeners() {
+        // Like buttons
+        document.querySelectorAll('.like-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                if (!this.isParticipating) {
+                    document.getElementById('userBanner').classList.add('active');
+                    return;
+                }
+                this.handleLike(e.target.closest('.like-btn'));
+            });
+        });
         
-        // Reset input
-        commentInput.value = '';
-        sendBtn.disabled = true;
-        showToast('Comment posted successfully', 'success');
-    } catch (error) {
-        console.error('Error adding comment:', error);
-        showToast('Error posting comment: ' + error.message, 'error');
-    }
-}
-
-// Add a reply using API
-async function addReply(commentId) {
-    const replyInput = document.getElementById(`replyInput-${commentId}`);
-    const content = replyInput.value.trim();
-    if (!content) return;
-    
-    const replyData = {
-        content: content,
-        nickname: userNickname
-    };
-    
-    try {
-        await EldrexAPI.addReply(commentId, replyData);
+        // Report buttons
+        document.querySelectorAll('.report-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                if (!this.isParticipating) {
+                    document.getElementById('userBanner').classList.add('active');
+                    return;
+                }
+                this.handleReport(e.target.closest('.report-btn'));
+            });
+        });
         
-        // Hide the reply form
-        document.getElementById(`replyForm-${commentId}`).style.display = 'none';
-        replyInput.value = '';
-        showToast('Reply posted successfully', 'success');
-    } catch (error) {
-        console.error('Error adding reply:', error);
-        showToast('Error posting reply: ' + error.message, 'error');
+        // Reply buttons
+        document.querySelectorAll('.reply-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                if (!this.isParticipating) {
+                    document.getElementById('userBanner').classList.add('active');
+                    return;
+                }
+                this.handleReply(e.target.closest('.reply-btn'));
+            });
+        });
     }
-}
 
-// Toggle like using API
-async function toggleLike(commentId) {
-    try {
-        const userId = getUserId();
-        await EldrexAPI.toggleLike(commentId, userId);
-        // Real-time listener will update the UI automatically
-    } catch (error) {
-        console.error('Error toggling like:', error);
-        showToast('Error updating like: ' + error.message, 'error');
-    }
-}
-
-// Toggle reply form visibility
-function toggleReplyForm(commentId) {
-    const replyForm = document.getElementById(`replyForm-${commentId}`);
-    replyForm.style.display = replyForm.style.display === 'none' ? 'flex' : 'none';
-    
-    // Focus on the input when showing
-    if (replyForm.style.display === 'flex') {
-        document.getElementById(`replyInput-${commentId}`).focus();
-    }
-}
-
-// Open report modal
-function openReportModal(commentId) {
-    commentToReport = commentId;
-    reportModal.classList.add('active');
-}
-
-// Report a comment using API
-async function submitReportComment(commentId, reason, details) {
-    const reportData = {
-        reason: reason,
-        details: details,
-        reporterId: getUserId()
-    };
-    
-    try {
-        await EldrexAPI.reportComment(commentId, reportData);
-        showToast('Comment reported successfully', 'success');
-    } catch (error) {
-        console.error('Error reporting comment:', error);
-        showToast('Error reporting comment: ' + error.message, 'error');
-    }
-}
-
-// Toggle sensitive content blur
-function toggleSensitiveContent(element) {
-    element.classList.toggle('blurred');
-}
-
-// Format category for display
-function formatCategory(category) {
-    return category.charAt(0).toUpperCase() + category.slice(1);
-}
-
-// Generate a color from a string (for avatars)
-function stringToColor(str) {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-        hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    
-    const hue = hash % 360;
-    return `hsl(${hue}, 60%, 65%)`;
-}
-
-// Format timestamp
-function formatTimestamp(timestamp) {
-    if (!timestamp) return 'Just now';
-    
-    try {
-        const now = new Date();
-        const commentTime = timestamp.toDate();
-        const diffMs = now - commentTime;
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMs / 3600000);
-        const diffDays = Math.floor(diffMs / 86400000);
+    async handleLike(button) {
+        const commentId = button.dataset.commentId;
+        const replyId = button.dataset.replyId;
         
-        if (diffMins < 1) return 'Just now';
-        if (diffMins < 60) return `${diffMins} min ago`;
-        if (diffHours < 24) return `${diffHours} hr ago`;
-        if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-        
-        return commentTime.toLocaleDateString();
-    } catch (error) {
-        return 'Recently';
-    }
-}
-
-// Show skeleton loading
-function showSkeletonLoading() {
-    const skeletonComment = document.querySelector('.skeleton-comment');
-    if (skeletonComment) {
-        skeletonComment.style.display = 'block';
-        // Clone it a few times
-        for (let i = 0; i < 3; i++) {
-            const clone = skeletonComment.cloneNode(true);
-            commentsContainer.appendChild(clone);
+        try {
+            if (commentId) {
+                await feedAPI.toggleLike(commentId, this.currentUser.uid);
+            } else if (replyId) {
+                await feedAPI.toggleReplyLike(replyId, this.currentUser.uid);
+            }
+        } catch (error) {
+            console.error('Error toggling like:', error);
+            this.showToast('Failed to update like', 'error');
         }
     }
+
+    async handleReport(button) {
+        const commentId = button.dataset.commentId;
+        const replyId = button.dataset.replyId;
+        
+        const reason = prompt('Please specify the reason for reporting:');
+        if (!reason) return;
+        
+        try {
+            if (commentId) {
+                await feedAPI.reportContent(commentId, 'comment', reason, this.currentUser.uid);
+            } else if (replyId) {
+                await feedAPI.reportContent(replyId, 'reply', reason, this.currentUser.uid);
+            }
+            
+            this.showToast('Content reported successfully', 'success');
+        } catch (error) {
+            console.error('Error reporting content:', error);
+            this.showToast('Failed to report content', 'error');
+        }
+    }
+
+    handleReply(button) {
+        const commentId = button.dataset.commentId;
+        const replyText = prompt('Enter your reply:');
+        
+        if (!replyText) return;
+        
+        this.postReply(commentId, replyText);
+    }
+
+    async postComment() {
+        const content = document.getElementById('commentInput').value.trim();
+        const category = document.getElementById('categorySelect').value;
+        
+        if (!content) {
+            this.showToast('Please enter a comment', 'warning');
+            return;
+        }
+        
+        if (!this.isParticipating) {
+            document.getElementById('userBanner').classList.add('active');
+            return;
+        }
+        
+        try {
+            // Get user profile
+            const userProfile = await this.getUserProfile();
+            
+            // Check for sensitive content
+            const isSensitive = this.checkSensitiveContent(content);
+            
+            // Post to Firebase
+            await feedAPI.postComment({
+                content,
+                category,
+                userName: userProfile.displayName,
+                userAvatar: userProfile.avatarLetter,
+                userId: this.currentUser.uid,
+                isSensitive,
+                status: 'approved'
+            });
+            
+            // Clear input
+            document.getElementById('commentInput').value = '';
+            document.getElementById('commentInput').style.height = 'auto';
+            
+            // Show success
+            this.showToast('Comment posted successfully', 'success');
+            
+        } catch (error) {
+            console.error('Error posting comment:', error);
+            this.showToast('Failed to post comment', 'error');
+        }
+    }
+
+    async postReply(commentId, content) {
+        try {
+            const userProfile = await this.getUserProfile();
+            
+            await feedAPI.postReply(commentId, {
+                content,
+                userName: userProfile.displayName,
+                userAvatar: userProfile.avatarLetter,
+                userId: this.currentUser.uid,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            
+            this.showToast('Reply posted successfully', 'success');
+            
+        } catch (error) {
+            console.error('Error posting reply:', error);
+            this.showToast('Failed to post reply', 'error');
+        }
+    }
+
+    async getUserProfile() {
+        const userDoc = await this.db.collection('anonymousUsers').doc(this.currentUser.uid).get();
+        return userDoc.exists ? userDoc.data() : { displayName: 'AnonymousUser', avatarLetter: 'A' };
+    }
+
+    checkSensitiveContent(text) {
+        const sensitiveWords = [
+            'hate', 'violence', 'attack', 'harm', 'abuse', 'kill', 'hurt',
+            'discrimination', 'harassment', 'threat', 'danger', 'dangerous',
+            'offensive', 'inappropriate', 'explicit'
+        ];
+        
+        const lowerText = text.toLowerCase();
+        return sensitiveWords.some(word => lowerText.includes(word));
+    }
+
+    filterCommentsByCategory(category) {
+        this.currentCategory = category;
+        this.renderComments();
+    }
+
+    formatCategory(category) {
+        const categories = {
+            improvement: 'Improvement',
+            recommendation: 'Recommendation',
+            request: 'Request',
+            report: 'Report',
+            others: 'Others'
+        };
+        return categories[category] || category;
+    }
+
+    formatTimestamp(timestamp) {
+        const now = new Date();
+        const diff = now - timestamp;
+        
+        const minute = 60 * 1000;
+        const hour = minute * 60;
+        const day = hour * 24;
+        
+        if (diff < minute) return 'Just now';
+        if (diff < hour) return `${Math.floor(diff / minute)}m ago`;
+        if (diff < day) return `${Math.floor(diff / hour)}h ago`;
+        if (diff < day * 7) return `${Math.floor(diff / day)}d ago`;
+        
+        return timestamp.toLocaleDateString();
+    }
+
+    showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.innerHTML = `
+            <div class="toast-icon">
+                <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'exclamation-triangle' : 'info'}"></i>
+            </div>
+            <div class="toast-message">${message}</div>
+        `;
+        
+        document.body.appendChild(toast);
+        
+        setTimeout(() => toast.classList.add('active'), 100);
+        
+        setTimeout(() => {
+            toast.classList.remove('active');
+            setTimeout(() => toast.remove(), 500);
+        }, 4000);
+    }
+
+    // Settings methods
+    async changeNickname() {
+        const newName = prompt('Enter new nickname:');
+        if (!newName) return;
+        
+        try {
+            await this.db.collection('anonymousUsers').doc(this.currentUser.uid).update({
+                displayName: newName
+            });
+            
+            this.showToast('Nickname updated successfully', 'success');
+            document.getElementById('bottomSheet').classList.remove('active');
+            
+        } catch (error) {
+            console.error('Error updating nickname:', error);
+            this.showToast('Failed to update nickname', 'error');
+        }
+    }
+
+    showContentFilters() {
+        alert('Content filter settings would be implemented here');
+        document.getElementById('bottomSheet').classList.remove('active');
+    }
+
+    showPrivacyInfo() {
+        alert(`Privacy Information:
+        
+• All interactions are completely anonymous
+• No personal data is stored or collected
+• Comments are automatically screened for sensitive content
+• You can report inappropriate content
+• Your identity is protected at all times`);
+        document.getElementById('bottomSheet').classList.remove('active');
+    }
+
+    reportProblem() {
+        const problem = prompt('Please describe the problem you encountered:');
+        if (!problem) return;
+        
+        // In a real implementation, this would send to a support system
+        console.log('Problem reported:', problem);
+        this.showToast('Problem reported successfully', 'success');
+        document.getElementById('bottomSheet').classList.remove('active');
+    }
 }
 
-// Hide skeleton loading
-function hideSkeletonLoading() {
-    document.querySelectorAll('.skeleton-comment').forEach(el => {
-        el.style.display = 'none';
-    });
-}
-
-// Show toast notification
-function showToast(message, type = 'success') {
-    toastMessage.textContent = message;
-    toast.className = 'toast ' + type;
-    toast.classList.add('active');
-    
-    setTimeout(() => {
-        toast.classList.remove('active');
-    }, 5000);
-}
-
-// Make functions available globally
-window.toggleLike = toggleLike;
-window.toggleReplyForm = toggleReplyForm;
-window.addReply = addReply;
-window.openReportModal = openReportModal;
-window.toggleSensitiveContent = toggleSensitiveContent;
-
-// Initialize the app when DOM is loaded
-document.addEventListener('DOMContentLoaded', init);
+// Initialize the platform when DOM is loaded
+let eldrexFeed;
+document.addEventListener('DOMContentLoaded', () => {
+    eldrexFeed = new EldrexFeed();
+});
