@@ -834,3 +834,65 @@ button:focus-visible,
         background-color: var(--sage-200);
     }
 }
+
+/* Performance Optimizations */
+.comments-container {
+    content-visibility: auto;
+    contain-intrinsic-size: 1px 5000px;
+}
+
+.comment-card {
+    will-change: transform;
+    contain: layout style paint;
+}
+
+/* Reduced motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Hardware acceleration for smooth scrolling */
+main {
+    -webkit-overflow-scrolling: touch;
+    transform: translateZ(0);
+}
+
+/* Optimized skeleton loading */
+.skeleton-comment {
+    animation: skeleton-loading 2s ease-in-out infinite;
+}
+
+/* Critical CSS above the fold */
+.header, .subheader, .input-container {
+    position: sticky;
+    z-index: 100;
+    background: var(--card-bg);
+}
+
+/* Lazy loading for images */
+.comment-card img {
+    loading: lazy;
+}
+
+/* Performance monitoring widget (development only) */
+.performance-widget {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    background: rgba(0,0,0,0.8);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-family: monospace;
+    z-index: 10000;
+    display: none;
+}
+
+.debug-mode .performance-widget {
+    display: block;
+}
