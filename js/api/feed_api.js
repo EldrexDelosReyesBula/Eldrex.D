@@ -1,5 +1,4 @@
-
-// Firebase Configuration
+// Production Firebase API for Eldrex Platform
 const firebaseConfig = {
   apiKey: "AIzaSyBXon59d9UHyLT0gYuZE2KKJ-gv0u5rTHk",
   authDomain: "feedback-e7037.firebaseapp.com",
@@ -11,186 +10,71 @@ const firebaseConfig = {
   measurementId: "G-TZDZMDPX6D"
 };
 
-
-// Initialize Firebase
-try {
-    firebase.initializeApp(firebaseConfig);
-    console.log('Firebase initialized successfully');
-} catch (error) {
-    console.error('Firebase initialization error:', error);
-}
-
-const db = firebase.firestore();
-const auth = firebase.auth();
-
-// Comprehensive sensitive words list for client-side filtering
-const sensitiveWords = [
-    // Profanity and offensive language
-    'fuck', 'shit', 'asshole', 'bitch', 'bastard', 'dick', 'pussy', 'cunt',
-    'whore', 'slut', 'retard', 'fag', 'faggot', 'nigger', 'nigga', 'chink',
-    
-    // Harassment and hate speech
-    'kill', 'murder', 'death', 'die', 'suicide', 'harm', 'hurt', 'attack',
-    'violence', 'abuse', 'rape', 'molest', 'pedophile', 'terrorist',
-    'bomb', 'shoot', 'gun', 'weapon', 'attack',
-    
-    // Discriminatory terms
-    'retarded', 'stupid', 'idiot', 'moron', 'imbecile', 'retard',
-    'fatso', 'ugly', 'loser', 'worthless', 'useless', 'failure',
-    
-    // Explicit content
-    'porn', 'porno', 'xxx', 'sex', 'sexual', 'nude', 'naked', 'dick', 'pussy',
-    'penis', 'vagina', 'boobs', 'tits', 'ass', 'butt', 'anal', 'blowjob',
-    
-    // Threats and dangerous content
-    'threat', 'danger', 'dangerous', 'illegal', 'drugs', 'cocaine', 'heroin',
-    'meth', 'weed', 'marijuana', 'alcohol', 'drunk', 'drinking'
-];
-
-// Generate a unique user ID (for anonymous tracking)
-function getUserId() {
-    let userId = localStorage.getItem('userId');
-    if (!userId) {
-        userId = 'user_' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem('userId', userId);
-    }
-    return userId;
-}
-
-// API Functions
-const EldrexAPI = {
-    // Content moderation function (client-side only)
-    moderateContent(content) {
-        return new Promise((resolve) => {
-            // Client-side filtering with word boundaries
-            const hasSensitiveContent = sensitiveWords.some(word => {
-                const regex = new RegExp(`\\b${word}\\b`, 'i');
-                return regex.test(content);
-            });
-            
-            resolve({ 
-                sensitive: hasSensitiveContent, 
-                blocked: false // Never block, just mark as sensitive
-            });
-        });
-    },
-
-    // Get comments from Firestore
-    async getComments(category = 'all') {
+// Feed API Functions
+const feedAPI = {
+    // Post a new comment
+    async postComment(commentData) {
         try {
-            let query = db.collection('comments')
-                .where('approved', '==', true)
-                .orderBy('timestamp', 'desc')
-                .limit(50); // Limit to 50 comments per request
+            const commentRef = firebase.firestore().collection('comments').doc();
             
-            if (category !== 'all') {
-                query = query.where('category', '==', category);
-            }
+            const comment = {
+                id: commentRef.id,
+                ...commentData,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
             
-            const snapshot = await query.get();
-            const comments = [];
+            await commentRef.set(comment);
             
-            snapshot.forEach(doc => {
-                const comment = doc.data();
-                comment.id = doc.id;
-                
-                // Ensure all required fields exist
-                comment.likes = comment.likes || 0;
-                comment.userLikes = comment.userLikes || [];
-                comment.replies = comment.replies || [];
-                comment.reportCount = comment.reportCount || 0;
-                
-                comments.push(comment);
-            });
-            
-            return comments;
-        } catch (error) {
-            console.error('Error getting comments:', error);
-            throw error;
-        }
-    },
-
-    // Add comment to Firestore
-    async addComment(commentData) {
-        try {
-            // Input validation
-            if (!commentData.content || commentData.content.trim().length === 0) {
-                throw new Error('Comment content cannot be empty');
-            }
-            
-            if (commentData.content.length > 1000) {
-                throw new Error('Comment content too long');
-            }
-            
-            const validCategories = ['recommendation', 'improvement', 'request', 'report', 'other'];
-            if (!validCategories.includes(commentData.category)) {
-                throw new Error('Invalid comment category');
-            }
-            
-            // Moderate content before posting
-            const moderationResult = await this.moderateContent(commentData.content);
-            
-            const commentWithMetadata = {
-                content: commentData.content.trim(),
+            // Also store in Realtime Database for analytics
+            const realtimeRef = firebase.database().ref('comments/' + commentRef.id);
+            await realtimeRef.set({
+                id: commentRef.id,
                 category: commentData.category,
-                nickname: commentData.nickname ? commentData.nickname.trim().substring(0, 20) : null,
-                sensitive: moderationResult.sensitive,
-                approved: true, // Auto-approve all comments
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                likes: 0,
-                userLikes: [],
-                replies: [],
-                reported: false,
-                reportCount: 0,
-                userId: getUserId() // Track user for moderation purposes
-            };
+                timestamp: Date.now(),
+                hasSensitiveContent: commentData.isSensitive || false
+            });
             
-            const docRef = await db.collection('comments').add(commentWithMetadata);
-            return docRef.id;
+            return commentRef.id;
+            
         } catch (error) {
-            console.error('Error adding comment:', error);
-            throw error;
+            console.error('Error posting comment:', error);
+            throw new Error('Failed to post comment. Please try again.');
         }
     },
 
-    // Add reply to comment
-    async addReply(commentId, replyData) {
+    // Post a reply to a comment
+    async postReply(commentId, replyData) {
         try {
-            // Input validation
-            if (!replyData.content || replyData.content.trim().length === 0) {
-                throw new Error('Reply content cannot be empty');
-            }
+            const commentRef = firebase.firestore().collection('comments').doc(commentId);
+            const replyRef = commentRef.collection('replies').doc();
             
-            if (replyData.content.length > 500) {
-                throw new Error('Reply content too long');
-            }
-            
-            // Moderate reply content
-            const moderationResult = await this.moderateContent(replyData.content);
-            
-            const replyWithMetadata = {
-                content: replyData.content.trim(),
-                nickname: replyData.nickname ? replyData.nickname.trim().substring(0, 20) : null,
-                sensitive: moderationResult.sensitive,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                userId: getUserId()
+            const reply = {
+                id: replyRef.id,
+                ...replyData
             };
             
-            await db.collection('comments').doc(commentId).update({
-                replies: firebase.firestore.FieldValue.arrayUnion(replyWithMetadata)
+            // Add reply
+            await replyRef.set(reply);
+            
+            // Update comment reply count
+            await commentRef.update({
+                replyCount: firebase.firestore.FieldValue.increment(1),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
             
-            return true;
+            return replyRef.id;
+            
         } catch (error) {
-            console.error('Error adding reply:', error);
-            throw error;
+            console.error('Error posting reply:', error);
+            throw new Error('Failed to post reply. Please try again.');
         }
     },
 
     // Toggle like on comment
     async toggleLike(commentId, userId) {
         try {
-            const commentRef = db.collection('comments').doc(commentId);
+            const commentRef = firebase.firestore().collection('comments').doc(commentId);
             const commentDoc = await commentRef.get();
             
             if (!commentDoc.exists) {
@@ -198,100 +82,208 @@ const EldrexAPI = {
             }
             
             const comment = commentDoc.data();
-            const userLikes = comment.userLikes || [];
-            const userLiked = userLikes.includes(userId);
+            const likedBy = comment.likedBy || [];
+            const hasLiked = likedBy.includes(userId);
             
-            if (userLiked) {
-                // Unlike
+            if (hasLiked) {
+                // Remove like
                 await commentRef.update({
                     likes: firebase.firestore.FieldValue.increment(-1),
-                    userLikes: firebase.firestore.FieldValue.arrayRemove(userId)
+                    likedBy: firebase.firestore.FieldValue.arrayRemove(userId),
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
-                return { liked: false, likes: comment.likes - 1 };
+                
+                // Update Realtime DB
+                const realtimeRef = firebase.database().ref('commentLikes/' + commentId + '/' + userId);
+                await realtimeRef.remove();
+                
+                return false;
             } else {
-                // Like
+                // Add like
                 await commentRef.update({
                     likes: firebase.firestore.FieldValue.increment(1),
-                    userLikes: firebase.firestore.FieldValue.arrayUnion(userId)
+                    likedBy: firebase.firestore.FieldValue.arrayUnion(userId),
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
-                return { liked: true, likes: comment.likes + 1 };
+                
+                // Update Realtime DB
+                const realtimeRef = firebase.database().ref('commentLikes/' + commentId + '/' + userId);
+                await realtimeRef.set({
+                    timestamp: Date.now()
+                });
+                
+                return true;
             }
+            
         } catch (error) {
             console.error('Error toggling like:', error);
-            throw error;
+            throw new Error('Failed to update like. Please try again.');
         }
     },
 
-    // Report comment
-    async reportComment(commentId, reportData) {
+    // Report content
+    async reportContent(contentId, contentType, reason, userId) {
         try {
-            const userId = getUserId();
+            const reportRef = firebase.firestore().collection('reports').doc();
             
             const report = {
-                commentId: commentId,
-                reason: reportData.reason,
-                details: reportData.details ? reportData.details.trim().substring(0, 500) : null,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                reporterId: userId,
-                status: 'pending'
+                id: reportRef.id,
+                contentId,
+                contentType,
+                reason,
+                reportedBy: userId,
+                status: 'pending',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                reviewed: false
             };
             
-            // Add to reports collection
-            await db.collection('reports').add(report);
+            await reportRef.set(report);
             
-            // Increment report count on comment
-            await db.collection('comments').doc(commentId).update({
-                reportCount: firebase.firestore.FieldValue.increment(1),
-                reported: true
-            });
+            // Increment report count on the content
+            if (contentType === 'comment') {
+                const commentRef = firebase.firestore().collection('comments').doc(contentId);
+                await commentRef.update({
+                    reports: firebase.firestore.FieldValue.increment(1),
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                // Also track in Realtime DB for real-time moderation
+                const realtimeRef = firebase.database().ref('reports/' + contentId);
+                await realtimeRef.set({
+                    count: firebase.database.ServerValue.increment(1),
+                    lastReported: Date.now()
+                });
+            }
             
-            return true;
+            return reportRef.id;
+            
         } catch (error) {
-            console.error('Error reporting comment:', error);
-            throw error;
+            console.error('Error reporting content:', error);
+            throw new Error('Failed to report content. Please try again.');
         }
     },
 
-    // Real-time listener for comments
-    setupCommentsListener(category, callback) {
+    // Get user profile
+    async getUserProfile(userId) {
         try {
-            let query = db.collection('comments')
-                .where('approved', '==', true)
-                .orderBy('timestamp', 'desc')
-                .limit(50);
-            
-            if (category !== 'all') {
-                query = query.where('category', '==', category);
-            }
-            
-            return query.onSnapshot(snapshot => {
-                const comments = [];
-                snapshot.forEach(doc => {
-                    const comment = doc.data();
-                    comment.id = doc.id;
-                    
-                    // Ensure all required fields exist
-                    comment.likes = comment.likes || 0;
-                    comment.userLikes = comment.userLikes || [];
-                    comment.replies = comment.replies || [];
-                    comment.reportCount = comment.reportCount || 0;
-                    
-                    comments.push(comment);
-                });
-                callback(comments);
-            }, error => {
-                console.error('Comments listener error:', error);
-                callback(null, error);
+            const userDoc = await firebase.firestore().collection('anonymousUsers').doc(userId).get();
+            return userDoc.exists ? userDoc.data() : null;
+        } catch (error) {
+            console.error('Error getting user profile:', error);
+            throw new Error('Failed to load user profile.');
+        }
+    },
+
+    // Update user profile
+    async updateUserProfile(userId, updates) {
+        try {
+            const userRef = firebase.firestore().collection('anonymousUsers').doc(userId);
+            await userRef.update({
+                ...updates,
+                lastActive: firebase.firestore.FieldValue.serverTimestamp()
             });
         } catch (error) {
-            console.error('Error setting up comments listener:', error);
-            callback(null, error);
+            console.error('Error updating user profile:', error);
+            throw new Error('Failed to update profile. Please try again.');
+        }
+    },
+
+    // Get comments with pagination
+    async getComments(limit = 50, lastDoc = null) {
+        try {
+            let query = firebase.firestore()
+                .collection('comments')
+                .where('status', '==', 'active')
+                .orderBy('createdAt', 'desc')
+                .limit(limit);
+            
+            if (lastDoc) {
+                query = query.startAfter(lastDoc);
+            }
+            
+            const snapshot = await query.get();
+            const comments = [];
+            
+            snapshot.forEach(doc => {
+                comments.push({
+                    id: doc.id,
+                    ...doc.data()
+                });
+            });
+            
+            return {
+                comments,
+                lastDoc: snapshot.docs[snapshot.docs.length - 1] || null
+            };
+            
+        } catch (error) {
+            console.error('Error getting comments:', error);
+            throw new Error('Failed to load comments. Please refresh the page.');
+        }
+    },
+
+    // Get replies for a comment
+    async getReplies(commentId) {
+        try {
+            const snapshot = await firebase.firestore()
+                .collection('comments')
+                .doc(commentId)
+                .collection('replies')
+                .orderBy('createdAt', 'asc')
+                .get();
+            
+            const replies = [];
+            snapshot.forEach(doc => {
+                replies.push({
+                    id: doc.id,
+                    ...doc.data()
+                });
+            });
+            
+            return replies;
+            
+        } catch (error) {
+            console.error('Error getting replies:', error);
+            throw new Error('Failed to load replies.');
+        }
+    },
+
+    // Analytics - track platform usage
+    async trackAnalytics(event, data = {}) {
+        try {
+            const analyticsRef = firebase.database().ref('analytics/' + event + '/' + Date.now());
+            await analyticsRef.set({
+                ...data,
+                timestamp: Date.now(),
+                userAgent: navigator.userAgent,
+                path: window.location.pathname
+            });
+        } catch (error) {
+            console.error('Error tracking analytics:', error);
+            // Don't throw for analytics failures
+        }
+    },
+
+    // Get platform statistics
+    async getPlatformStats() {
+        try {
+            const statsRef = firebase.database().ref('platformStats');
+            const snapshot = await statsRef.once('value');
+            return snapshot.val() || {};
+        } catch (error) {
+            console.error('Error getting platform stats:', error);
+            return {};
         }
     }
 };
 
-// Make EldrexAPI globally available
-window.EldrexAPI = EldrexAPI;
-window.getUserId = getUserId;
+// Initialize analytics tracking
+feedAPI.trackAnalytics('pageView', {
+    page: 'feed',
+    referrer: document.referrer
+});
 
-console.log('EldrexAPI loaded successfully');
+// Export for global access
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { firebaseConfig, feedAPI };
+}
