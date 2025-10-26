@@ -10,394 +10,501 @@ const firebaseConfig = {
   measurementId: "G-TZDZMDPX6D"
 };
 
-// Performance monitoring
-const performance = {
-    startTime: Date.now(),
-    cacheHits: 0,
-    cacheMisses: 0
-};
+// Cache for frequently accessed data
+const apiCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-// Cache system
-const cache = {
-    comments: new Map(),
-    userProfiles: new Map(),
-    timestamps: new Map(),
-    maxSize: 100,
-    ttl: 5 * 60 * 1000, // 5 minutes
-    
-    get(key) {
-        const item = this.comments.get(key);
-        if (item && Date.now() - item.timestamp < this.ttl) {
-            this.cacheHits++;
-            return item.data;
-        }
-        this.cacheMisses++;
-        return null;
+// Performance monitoring
+const performanceMetrics = {
+    requests: new Map(),
+    startRequest: (endpoint) => {
+        performanceMetrics.requests.set(endpoint, performance.now());
     },
-    
-    set(key, data) {
-        if (this.comments.size >= this.maxSize) {
-            const firstKey = this.comments.keys().next().value;
-            this.comments.delete(firstKey);
+    endRequest: (endpoint) => {
+        const start = performanceMetrics.requests.get(endpoint);
+        if (start) {
+            const duration = performance.now() - start;
+            console.log(`🚀 ${endpoint}: ${duration.toFixed(2)}ms`);
+            performanceMetrics.requests.delete(endpoint);
+            
+            // Track in analytics
+            feedAPI.trackAnalytics('api_performance', {
+                endpoint,
+                duration: Math.round(duration)
+            });
         }
-        this.comments.set(key, {
-            data,
-            timestamp: Date.now()
-        });
-    },
-    
-    clear() {
-        this.comments.clear();
-        this.userProfiles.clear();
     }
 };
 
-// Optimized Feed API Functions
+// Feed API Functions with optimizations
 const feedAPI = {
-    // Batch operations for better performance
-    batch: null,
-    batchSize: 0,
-    maxBatchSize: 10,
-    
-    initializeBatch() {
-        this.batch = firebase.firestore().batch();
-        this.batchSize = 0;
-    },
-    
-    async commitBatch() {
-        if (this.batch && this.batchSize > 0) {
-            await this.batch.commit();
-            this.batch = null;
-            this.batchSize = 0;
-        }
-    },
-    
-    // Optimized comment posting with compression
+    // Post a new comment with batch operations
     async postComment(commentData) {
-        const startTime = performance.now();
+        performanceMetrics.startRequest('postComment');
         
         try {
+            const batch = firebase.firestore().batch();
             const commentRef = firebase.firestore().collection('comments').doc();
+            const statsRef = firebase.database().ref('platformStats/comments');
             
-            // Compress data for faster transfer
-            const compressedComment = {
+            // Prepare comment data
+            const comment = {
                 id: commentRef.id,
-                c: commentData.content, // content
-                cat: commentData.category, // category
-                un: commentData.userName, // userName
-                ua: commentData.userAvatar, // userAvatar
-                uid: commentData.userId, // userId
-                sens: commentData.isSensitive, // isSensitive
-                stat: 'active', // status
-                l: 0, // likes
-                lb: [], // likedBy
-                rc: 0, // replyCount
-                rep: 0, // reports
-                ct: firebase.firestore.FieldValue.serverTimestamp(), // createdAt
-                ut: firebase.firestore.FieldValue.serverTimestamp() // updatedAt
+                ...commentData,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             };
             
-            await commentRef.set(compressedComment);
+            // Add to batch
+            batch.set(commentRef, comment);
+            
+            // Execute batch
+            await batch.commit();
+            
+            // Update stats in background (non-blocking)
+            statsRef.transaction(current => (current || 0) + 1).catch(console.error);
             
             // Cache the new comment
-            cache.set(`comment_${commentRef.id}`, compressedComment);
+            apiCache.set(`comment_${commentRef.id}`, {
+                data: comment,
+                timestamp: Date.now()
+            });
             
-            // Update analytics in background
-            this.updateCommentStats('increment').catch(console.error);
-            
-            const endTime = performance.now();
-            console.log(`Comment posted in ${endTime - startTime}ms`);
-            
+            performanceMetrics.endRequest('postComment');
             return commentRef.id;
             
         } catch (error) {
+            performanceMetrics.endRequest('postComment');
             console.error('Error posting comment:', error);
             throw new Error('Failed to post comment. Please try again.');
         }
     },
 
-    // Optimized comment fetching with caching
-    async getComments(limit = 20, lastDoc = null) {
-        const cacheKey = `comments_${limit}_${lastDoc ? lastDoc.id : 'first'}`;
-        const cached = cache.get(cacheKey);
-        
-        if (cached) {
-            return cached;
-        }
-
-        const startTime = performance.now();
+    // Post a reply with optimistic updates
+    async postReply(commentId, replyData) {
+        performanceMetrics.startRequest('postReply');
         
         try {
-            let query = firebase.firestore()
+            const replyRef = firebase.firestore()
                 .collection('comments')
-                .where('stat', '==', 'active')
-                .orderBy('ct', 'desc')
-                .limit(limit);
-
-            if (lastDoc) {
-                query = query.startAfter(lastDoc);
-            }
-
-            const snapshot = await query.get();
-            const comments = [];
-
-            // Parallel processing of documents
-            const processDoc = async (doc) => {
-                const data = doc.data();
-                // Decompress data
-                return {
-                    id: doc.id,
-                    content: data.c,
-                    category: data.cat,
-                    userName: data.un,
-                    userAvatar: data.ua,
-                    userId: data.uid,
-                    isSensitive: data.sens,
-                    status: data.stat,
-                    likes: data.l,
-                    likedBy: data.lb || [],
-                    replyCount: data.rc,
-                    reports: data.rep,
-                    createdAt: data.ct,
-                    updatedAt: data.ut
-                };
+                .doc(commentId)
+                .collection('replies')
+                .doc();
+            
+            const reply = {
+                id: replyRef.id,
+                ...replyData
             };
-
-            // Process documents in parallel
-            const promises = snapshot.docs.map(processDoc);
-            const processedComments = await Promise.all(promises);
             
-            comments.push(...processedComments);
-
-            const result = {
-                comments,
-                lastDoc: snapshot.docs[snapshot.docs.length - 1] || null
-            };
-
-            // Cache the result
-            cache.set(cacheKey, result);
+            // Use batch for atomic operations
+            const batch = firebase.firestore().batch();
+            batch.set(replyRef, reply);
+            batch.update(
+                firebase.firestore().collection('comments').doc(commentId),
+                {
+                    replyCount: firebase.firestore.FieldValue.increment(1),
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                }
+            );
             
-            const endTime = performance.now();
-            console.log(`Comments fetched in ${endTime - startTime}ms`);
+            await batch.commit();
             
-            return result;
-
+            performanceMetrics.endRequest('postReply');
+            return replyRef.id;
+            
         } catch (error) {
-            console.error('Error getting comments:', error);
-            throw new Error('Failed to load comments. Please refresh the page.');
+            performanceMetrics.endRequest('postReply');
+            console.error('Error posting reply:', error);
+            throw new Error('Failed to post reply. Please try again.');
         }
     },
 
-    // Optimized like handling with immediate UI update
+    // Optimized like toggle with optimistic UI
     async toggleLike(commentId, userId) {
-        const startTime = performance.now();
+        performanceMetrics.startRequest('toggleLike');
         
         try {
             const commentRef = firebase.firestore().collection('comments').doc(commentId);
+            const commentDoc = await this.getCachedDocument(commentRef);
             
-            // Use transaction for atomic operations
-            const result = await firebase.firestore().runTransaction(async (transaction) => {
-                const commentDoc = await transaction.get(commentRef);
+            if (!commentDoc.exists) {
+                throw new Error('Comment not found');
+            }
+            
+            const comment = commentDoc.data();
+            const likedBy = comment.likedBy || [];
+            const hasLiked = likedBy.includes(userId);
+            
+            if (hasLiked) {
+                // Remove like
+                await commentRef.update({
+                    likes: firebase.firestore.FieldValue.increment(-1),
+                    likedBy: firebase.firestore.FieldValue.arrayRemove(userId),
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
                 
-                if (!commentDoc.exists) {
-                    throw new Error('Comment not found');
-                }
+                // Update cache
+                this.updateCommentCache(commentId, {
+                    likes: (comment.likes || 1) - 1,
+                    likedBy: likedBy.filter(id => id !== userId)
+                });
                 
-                const comment = commentDoc.data();
-                const likedBy = comment.lb || [];
-                const hasLiked = likedBy.includes(userId);
+                performanceMetrics.endRequest('toggleLike');
+                return false;
+            } else {
+                // Add like
+                await commentRef.update({
+                    likes: firebase.firestore.FieldValue.increment(1),
+                    likedBy: firebase.firestore.FieldValue.arrayUnion(userId),
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
                 
-                if (hasLiked) {
-                    // Remove like
-                    transaction.update(commentRef, {
-                        l: firebase.firestore.FieldValue.increment(-1),
-                        lb: firebase.firestore.FieldValue.arrayRemove(userId),
-                        ut: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                    return false;
-                } else {
-                    // Add like
-                    transaction.update(commentRef, {
-                        l: firebase.firestore.FieldValue.increment(1),
-                        lb: firebase.firestore.FieldValue.arrayUnion(userId),
-                        ut: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                    return true;
-                }
-            });
-            
-            // Invalidate cache for this comment
-            cache.delete(`comment_${commentId}`);
-            
-            const endTime = performance.now();
-            console.log(`Like toggled in ${endTime - startTime}ms`);
-            
-            return result;
+                // Update cache
+                this.updateCommentCache(commentId, {
+                    likes: (comment.likes || 0) + 1,
+                    likedBy: [...likedBy, userId]
+                });
+                
+                performanceMetrics.endRequest('toggleLike');
+                return true;
+            }
             
         } catch (error) {
+            performanceMetrics.endRequest('toggleLike');
             console.error('Error toggling like:', error);
             throw new Error('Failed to update like. Please try again.');
         }
     },
 
-    // Optimized user profile management
-    async getUserProfile(userId, forceRefresh = false) {
-        const cacheKey = `user_${userId}`;
+    // Report content with deduplication
+    async reportContent(contentId, contentType, reason, userId) {
+        performanceMetrics.startRequest('reportContent');
         
-        if (!forceRefresh) {
-            const cached = cache.get(cacheKey);
-            if (cached) return cached;
-        }
-
         try {
-            const userDoc = await firebase.firestore().collection('anonymousUsers').doc(userId).get();
-            const userData = userDoc.exists ? userDoc.data() : null;
+            // Check for recent duplicate reports
+            const recentReports = await firebase.firestore()
+                .collection('reports')
+                .where('contentId', '==', contentId)
+                .where('reportedBy', '==', userId)
+                .where('createdAt', '>', new Date(Date.now() - 24 * 60 * 60 * 1000)) // 24 hours
+                .limit(1)
+                .get();
             
-            if (userData) {
-                cache.set(cacheKey, userData);
+            if (!recentReports.empty) {
+                throw new Error('You have already reported this content recently.');
             }
             
-            return userData;
+            const reportRef = firebase.firestore().collection('reports').doc();
+            const report = {
+                id: reportRef.id,
+                contentId,
+                contentType,
+                reason,
+                reportedBy: userId,
+                status: 'pending',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                reviewed: false
+            };
+            
+            await reportRef.set(report);
+            
+            // Update report count
+            if (contentType === 'comment') {
+                await firebase.firestore()
+                    .collection('comments')
+                    .doc(contentId)
+                    .update({
+                        reports: firebase.firestore.FieldValue.increment(1),
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+            }
+            
+            performanceMetrics.endRequest('reportContent');
+            return reportRef.id;
             
         } catch (error) {
-            console.error('Error getting user profile:', error);
-            return null;
+            performanceMetrics.endRequest('reportContent');
+            console.error('Error reporting content:', error);
+            throw error.message.includes('already reported') 
+                ? error 
+                : new Error('Failed to report content. Please try again.');
         }
     },
 
-    // Batch profile updates
-    async updateUserProfile(userId, updates) {
+    // Optimized user profile with caching
+    async getUserProfile(userId) {
+        const cacheKey = `user_${userId}`;
+        const cached = apiCache.get(cacheKey);
+        
+        if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+            return cached.data;
+        }
+        
+        performanceMetrics.startRequest('getUserProfile');
+        
         try {
-            const userRef = firebase.firestore().collection('anonymousUsers').doc(userId);
+            const userDoc = await firebase.firestore()
+                .collection('anonymousUsers')
+                .doc(userId)
+                .get();
             
-            await userRef.update({
-                ...updates,
-                lastActive: firebase.firestore.FieldValue.serverTimestamp()
+            const data = userDoc.exists ? userDoc.data() : null;
+            
+            // Cache the result
+            apiCache.set(cacheKey, {
+                data,
+                timestamp: Date.now()
             });
+            
+            performanceMetrics.endRequest('getUserProfile');
+            return data;
+            
+        } catch (error) {
+            performanceMetrics.endRequest('getUserProfile');
+            console.error('Error getting user profile:', error);
+            throw new Error('Failed to load user profile.');
+        }
+    },
+
+    // Update user profile with cache invalidation
+    async updateUserProfile(userId, updates) {
+        performanceMetrics.startRequest('updateUserProfile');
+        
+        try {
+            await firebase.firestore()
+                .collection('anonymousUsers')
+                .doc(userId)
+                .update({
+                    ...updates,
+                    lastActive: firebase.firestore.FieldValue.serverTimestamp()
+                });
             
             // Invalidate cache
-            cache.delete(`user_${userId}`);
+            apiCache.delete(`user_${userId}`);
+            
+            performanceMetrics.endRequest('updateUserProfile');
             
         } catch (error) {
+            performanceMetrics.endRequest('updateUserProfile');
             console.error('Error updating user profile:', error);
-            throw new Error('Failed to update profile.');
+            throw new Error('Failed to update profile. Please try again.');
         }
     },
 
-    // Optimized comment streaming with debouncing
-    setupCommentsListener(callback, options = {}) {
-        const {
-            debounceMs = 300,
-            limit = 50
-        } = options;
-
-        let debounceTimer;
-        let lastSnapshot;
-
-        const debouncedCallback = (snapshot) => {
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => {
-                callback(snapshot);
-            }, debounceMs);
-        };
-
-        const commentsRef = firebase.firestore()
-            .collection('comments')
-            .where('stat', '==', 'active')
-            .orderBy('ct', 'desc')
-            .limit(limit);
-
-        return commentsRef.onSnapshot((snapshot) => {
-            lastSnapshot = snapshot;
-            debouncedCallback(snapshot);
-        });
-    },
-
-    // Prefetch next page of comments
-    async prefetchNextComments(lastDoc, limit = 10) {
+    // Optimized comments loading with pagination and caching
+    async getComments(limit = 20, startAfter = null) {
+        const cacheKey = `comments_${limit}_${startAfter?.id || 'initial'}`;
+        const cached = apiCache.get(cacheKey);
+        
+        if (cached && (Date.now() - cached.timestamp < CACHE_TTL / 2)) { // Shorter TTL for comments
+            return cached.data;
+        }
+        
+        performanceMetrics.startRequest('getComments');
+        
         try {
-            const nextComments = await this.getComments(limit, lastDoc);
-            // Cache the prefetched data
-            const cacheKey = `prefetch_${lastDoc.id}_${limit}`;
-            cache.set(cacheKey, nextComments);
-            return nextComments;
+            let query = firebase.firestore()
+                .collection('comments')
+                .where('status', '==', 'active')
+                .orderBy('createdAt', 'desc')
+                .limit(limit);
+            
+            if (startAfter) {
+                query = query.startAfter(startAfter);
+            }
+            
+            const snapshot = await query.get();
+            const comments = [];
+            
+            snapshot.forEach(doc => {
+                comments.push({
+                    id: doc.id,
+                    ...doc.data()
+                });
+                
+                // Cache individual comments
+                apiCache.set(`comment_${doc.id}`, {
+                    data: doc.data(),
+                    timestamp: Date.now()
+                });
+            });
+            
+            const result = {
+                comments,
+                lastDoc: snapshot.docs[snapshot.docs.length - 1] || null
+            };
+            
+            // Cache the batch result
+            apiCache.set(cacheKey, {
+                data: result,
+                timestamp: Date.now()
+            });
+            
+            performanceMetrics.endRequest('getComments');
+            return result;
+            
         } catch (error) {
-            console.error('Prefetch failed:', error);
-            return null;
+            performanceMetrics.endRequest('getComments');
+            console.error('Error getting comments:', error);
+            throw new Error('Failed to load comments. Please refresh the page.');
         }
     },
 
-    // Update platform statistics
-    async updateCommentStats(operation = 'increment') {
+    // Get replies with caching
+    async getReplies(commentId) {
+        const cacheKey = `replies_${commentId}`;
+        const cached = apiCache.get(cacheKey);
+        
+        if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+            return cached.data;
+        }
+        
+        performanceMetrics.startRequest('getReplies');
+        
         try {
-            const statsRef = firebase.database().ref('platformStats/comments');
-            await statsRef.transaction((current) => {
-                return (current || 0) + (operation === 'increment' ? 1 : -1);
+            const snapshot = await firebase.firestore()
+                .collection('comments')
+                .doc(commentId)
+                .collection('replies')
+                .orderBy('createdAt', 'asc')
+                .get();
+            
+            const replies = [];
+            snapshot.forEach(doc => {
+                replies.push({
+                    id: doc.id,
+                    ...doc.data()
+                });
+            });
+            
+            // Cache the result
+            apiCache.set(cacheKey, {
+                data: replies,
+                timestamp: Date.now()
+            });
+            
+            performanceMetrics.endRequest('getReplies');
+            return replies;
+            
+        } catch (error) {
+            performanceMetrics.endRequest('getReplies');
+            console.error('Error getting replies:', error);
+            throw new Error('Failed to load replies.');
+        }
+    },
+
+    // Analytics with batching
+    async trackAnalytics(event, data = {}) {
+        // Use requestIdleCallback for non-critical analytics
+        if ('requestIdleCallback' in window) {
+            requestIdleCallback(() => {
+                this._sendAnalytics(event, data);
+            });
+        } else {
+            setTimeout(() => this._sendAnalytics(event, data), 0);
+        }
+    },
+
+    async _sendAnalytics(event, data) {
+        try {
+            const analyticsRef = firebase.database().ref(`analytics/${event}/${Date.now()}`);
+            await analyticsRef.set({
+                ...data,
+                timestamp: Date.now(),
+                userAgent: navigator.userAgent?.substring(0, 100), // Limit size
+                path: window.location.pathname,
+                screen: `${screen.width}x${screen.height}`
             });
         } catch (error) {
-            console.error('Error updating stats:', error);
+            console.warn('Analytics error:', error);
         }
     },
 
-    // Get performance metrics
-    getPerformanceMetrics() {
-        return {
-            ...performance,
-            cacheHitRate: performance.cacheHits / (performance.cacheHits + performance.cacheMisses) || 0,
-            uptime: Date.now() - performance.startTime
-        };
+    // Platform statistics with caching
+    async getPlatformStats() {
+        const cacheKey = 'platform_stats';
+        const cached = apiCache.get(cacheKey);
+        
+        if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+            return cached.data;
+        }
+        
+        try {
+            const statsRef = firebase.database().ref('platformStats');
+            const snapshot = await statsRef.once('value');
+            const data = snapshot.val() || {};
+            
+            // Cache the result
+            apiCache.set(cacheKey, {
+                data,
+                timestamp: Date.now()
+            });
+            
+            return data;
+        } catch (error) {
+            console.error('Error getting platform stats:', error);
+            return {};
+        }
     },
 
-    // Clear cache (useful for development)
+    // Cache management helpers
+    async getCachedDocument(docRef) {
+        const cacheKey = `doc_${docRef.path}`;
+        const cached = apiCache.get(cacheKey);
+        
+        if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+            return cached.data;
+        }
+        
+        const doc = await docRef.get();
+        apiCache.set(cacheKey, {
+            data: doc,
+            timestamp: Date.now()
+        });
+        
+        return doc;
+    },
+
+    updateCommentCache(commentId, updates) {
+        const cacheKey = `comment_${commentId}`;
+        const cached = apiCache.get(cacheKey);
+        
+        if (cached) {
+            apiCache.set(cacheKey, {
+                data: { ...cached.data, ...updates },
+                timestamp: Date.now()
+            });
+        }
+    },
+
+    // Clear cache (useful for logout or refresh)
     clearCache() {
-        cache.clear();
+        apiCache.clear();
+    },
+
+    // Preload critical data
+    async preloadCriticalData() {
+        const preloads = [
+            this.getPlatformStats(),
+            this.getComments(10) // Preload first 10 comments
+        ];
+        
+        await Promise.allSettled(preloads);
     }
 };
 
-// Initialize performance monitoring
-performance.startTime = Date.now();
-
-// Preload essential data
-feedAPI.preloadEssentialData = async function() {
-    try {
-        // Preload first page of comments
-        await this.getComments(10);
-        
-        // Preload platform stats
-        const statsRef = firebase.database().ref('platformStats');
-        statsRef.once('value').then(snapshot => {
-            cache.set('platformStats', snapshot.val());
-        }).catch(console.error);
-        
-    } catch (error) {
-        console.error('Preload failed:', error);
-    }
-};
-
-// Initialize connection monitoring
-feedAPI.setupConnectionMonitoring = function() {
-    const connectedRef = firebase.database().ref('.info/connected');
-    connectedRef.on('value', (snap) => {
-        if (snap.val() === true) {
-            console.log('Firebase connection established');
-            // Re-establish any broken listeners
-            if (window.eldrexFeed) {
-                window.eldrexFeed.reconnectListeners();
-            }
-        } else {
-            console.log('Firebase connection lost');
-        }
+// Initialize analytics on load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        feedAPI.trackAnalytics('page_view', {
+            load_time: performance.timing.domContentLoadedEventEnd - performance.timing.navigationStart
+        });
     });
-};
+} else {
+    feedAPI.trackAnalytics('page_view');
+}
 
 // Export for global access
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { firebaseConfig, feedAPI, cache, performance };
+    module.exports = { firebaseConfig, feedAPI };
 }
-
-// Initialize connection monitoring immediately
-setTimeout(() => {
-    if (typeof firebase !== 'undefined') {
-        feedAPI.setupConnectionMonitoring();
-    }
-}, 1000);
