@@ -1,4 +1,4 @@
-// Production Eldrex Feed Platform
+// High-Performance Eldrex Feed Platform
 class EldrexFeed {
     constructor() {
         this.currentUser = null;
@@ -8,94 +8,76 @@ class EldrexFeed {
         this.db = null;
         this.auth = null;
         this.realtimeDb = null;
+        this.listeners = new Map();
+        this.isInitialized = false;
+        this.performance = {
+            loadTimes: [],
+            interactionTimes: []
+        };
+        
+        // Preload optimizations
+        this.preloadQueue = [];
+        this.isPreloading = false;
+        
         this.init();
     }
 
     async init() {
+        const startTime = performance.now();
+        
         try {
             // Initialize security first
             this.setupSecurity();
             
-            // Initialize Firebase
-            await this.initializeFirebase();
+            // Initialize Firebase with retry logic
+            await this.initializeFirebaseWithRetry();
+            
+            // Preload essential data in background
+            this.preloadEssentialData();
             
             // Set up event listeners
             this.setupEventListeners();
             
-            // Load initial data
-            await this.loadComments();
+            // Load initial data with progressive loading
+            await this.loadCommentsWithProgressiveRender();
             
             // Check user participation
             this.checkUserParticipation();
             
-            console.log('Eldrex Platform initialized successfully');
+            this.isInitialized = true;
+            
+            const endTime = performance.now();
+            this.performance.loadTimes.push(endTime - startTime);
+            
+            console.log(`Eldrex Platform initialized in ${endTime - startTime}ms`);
             
         } catch (error) {
             console.error('Failed to initialize Eldrex Platform:', error);
             this.showToast('Failed to initialize platform. Please refresh.', 'error');
+            
+            // Retry initialization after delay
+            setTimeout(() => this.init(), 3000);
         }
     }
 
-    setupSecurity() {
-        const allowedDomain = 'eldrex.landecs.org';
-        const currentDomain = window.location.hostname;
-        const currentProtocol = window.location.protocol;
-        
-        // Enhanced domain validation
-        if (currentDomain !== allowedDomain && 
-            currentDomain !== 'localhost' && 
-            !currentDomain.includes('127.0.0.1') &&
-            !currentDomain.includes('feedback-e7037')) {
-            
-            // Show security notice immediately
-            document.getElementById('securityNotice').classList.add('active');
-            
-            // Prevent all dev tools access
-            this.preventDevTools();
-            
-            // Redirect if embedded
-            if (window.self !== window.top) {
-                window.top.location.href = 'https://eldrex.landecs.org/404';
+    async initializeFirebaseWithRetry(maxRetries = 3) {
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                await this.initializeFirebase();
+                return; // Success
+            } catch (error) {
+                console.error(`Firebase initialization attempt ${attempt} failed:`, error);
+                
+                if (attempt === maxRetries) {
+                    throw error; // Final attempt failed
+                }
+                
+                // Wait with exponential backoff
+                await new Promise(resolve => 
+                    setTimeout(resolve, Math.pow(2, attempt) * 1000)
+                );
             }
-            
-            // Block further execution
-            throw new Error('Unauthorized domain access');
         }
-        
-        // Force HTTPS in production
-        if (currentProtocol !== 'https:' && !currentDomain.includes('localhost')) {
-            window.location.href = 'https://' + currentDomain + window.location.pathname + window.location.search;
-        }
-    }
-
-    preventDevTools() {
-        // Prevent right-click
-        document.addEventListener('contextmenu', function(e) {
-            e.preventDefault();
-            return false;
-        });
-        
-        // Prevent keyboard shortcuts
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'F12' || 
-                (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) || 
-                (e.ctrlKey && e.key === 'u')) {
-                e.preventDefault();
-                return false;
-            }
-        });
-        
-        // Detect dev tools opening
-        let devToolsOpen = false;
-        const element = new Image();
-        Object.defineProperty(element, 'id', {
-            get: function() {
-                devToolsOpen = true;
-                document.getElementById('securityNotice').classList.add('active');
-            }
-        });
-        
-        console.log(element);
     }
 
     async initializeFirebase() {
@@ -105,11 +87,16 @@ class EldrexFeed {
                 throw new Error('Firebase configuration not loaded');
             }
             
-            // Initialize Firebase
-            firebase.initializeApp(firebaseConfig);
+            // Initialize Firebase with performance settings
+            const app = firebase.initializeApp(firebaseConfig);
             this.db = firebase.firestore();
             this.auth = firebase.auth();
             this.realtimeDb = firebase.database();
+            
+            // Configure Firestore for performance
+            this.db.settings({
+                cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
+            });
             
             console.log('Firebase initialized successfully');
             
@@ -124,14 +111,18 @@ class EldrexFeed {
 
     async setupAnonymousAuth() {
         try {
+            // Use persisted authentication if available
+            const persistence = firebase.auth.Auth.Persistence.LOCAL;
+            await this.auth.setPersistence(persistence);
+            
             // Sign in anonymously
             const userCredential = await this.auth.signInAnonymously();
             this.currentUser = userCredential.user;
             
             console.log('Anonymous authentication successful:', this.currentUser.uid);
             
-            // Generate or get anonymous profile
-            await this.generateAnonymousProfile();
+            // Generate or get anonymous profile (non-blocking)
+            this.generateAnonymousProfile().catch(console.error);
             
         } catch (error) {
             console.error('Anonymous authentication failed:', error);
@@ -139,466 +130,198 @@ class EldrexFeed {
         }
     }
 
-    async generateAnonymousProfile() {
-        const userId = this.currentUser.uid;
-        const userRef = this.db.collection('anonymousUsers').doc(userId);
+    async preloadEssentialData() {
+        if (this.isPreloading) return;
+        
+        this.isPreloading = true;
         
         try {
-            const userDoc = await userRef.get();
-            
-            if (!userDoc.exists) {
-                // Generate random anonymous profile
-                const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-                const randomLetter = letters[Math.floor(Math.random() * letters.length)];
-                const randomName = 'AnonymousUser' + Math.floor(Math.random() * 10000);
-                
-                await userRef.set({
-                    avatarLetter: randomLetter,
-                    displayName: randomName,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    lastActive: firebase.firestore.FieldValue.serverTimestamp(),
-                    sessionCount: 1
-                });
-                
-                console.log('New anonymous profile created');
-            } else {
-                // Update last active and session count
-                await userRef.update({
-                    lastActive: firebase.firestore.FieldValue.serverTimestamp(),
-                    sessionCount: firebase.firestore.FieldValue.increment(1)
-                });
+            // Preload user profile
+            if (this.currentUser) {
+                feedAPI.getUserProfile(this.currentUser.uid)
+                    .then(profile => {
+                        if (profile) {
+                            console.log('User profile preloaded');
+                        }
+                    })
+                    .catch(console.error);
             }
             
-        } catch (error) {
-            console.error('Error managing user profile:', error);
-            // Continue without profile - it's optional
+            // Preload platform stats
+            feedAPI.getPlatformStats()
+                .then(stats => {
+                    console.log('Platform stats preloaded');
+                })
+                .catch(console.error);
+                
+        } finally {
+            this.isPreloading = false;
         }
     }
 
-    setupEventListeners() {
-        // Back button
-        document.getElementById('backBtn').addEventListener('click', () => {
-            if (window.history.length > 1) {
-                window.history.back();
-            } else {
-                window.location.href = '/';
-            }
-        });
+    async loadCommentsWithProgressiveRender() {
+        const container = document.getElementById('commentsContainer');
         
-        // Settings button
-        document.getElementById('settingsBtn').addEventListener('click', () => {
-            this.openSettings();
-        });
+        // Show immediate skeleton loading
+        this.showSkeletonLoading();
         
-        // Close bottom sheet
-        document.getElementById('closeSheet').addEventListener('click', () => {
-            this.closeSettings();
-        });
-        
-        // Category selection
-        document.querySelectorAll('.category').forEach(category => {
-            category.addEventListener('click', (e) => {
-                this.handleCategoryChange(e.target);
-            });
-        });
-        
-        // Send comment
-        document.getElementById('sendBtn').addEventListener('click', () => this.postComment());
-        document.getElementById('commentInput').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                this.postComment();
-            }
-        });
-        
-        // Auto-resize textarea
-        document.getElementById('commentInput').addEventListener('input', function() {
-            this.style.height = 'auto';
-            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
-        });
-        
-        // Banner actions
-        document.getElementById('confirmParticipation').addEventListener('click', () => {
-            this.confirmParticipation();
-        });
-        
-        document.getElementById('exploreOnly').addEventListener('click', () => {
-            this.setExploreOnlyMode();
-        });
-        
-        // Security redirect
-        document.getElementById('securityRedirect').addEventListener('click', () => {
-            window.location.href = 'https://eldrex.landecs.org';
-        });
-        
-        // Settings options
-        document.getElementById('changeNickname').addEventListener('click', () => {
-            this.changeNickname();
-        });
-        
-        document.getElementById('filterContent').addEventListener('click', () => {
-            this.showContentFilters();
-        });
-        
-        document.getElementById('privacyInfo').addEventListener('click', () => {
-            this.showPrivacyInfo();
-        });
-        
-        document.getElementById('reportProblem').addEventListener('click', () => {
-            this.reportProblem();
-        });
-        
-        // Close settings when clicking outside
-        document.getElementById('bottomSheet').addEventListener('click', (e) => {
-            if (e.target === document.getElementById('bottomSheet')) {
-                this.closeSettings();
-            }
-        });
-    }
-
-    openSettings() {
-        document.getElementById('bottomSheet').classList.add('active');
-    }
-
-    closeSettings() {
-        document.getElementById('bottomSheet').classList.remove('active');
-    }
-
-    handleCategoryChange(categoryElement) {
-        document.querySelectorAll('.category').forEach(c => c.classList.remove('active'));
-        categoryElement.classList.add('active');
-        this.currentCategory = categoryElement.dataset.category;
-        this.filterCommentsByCategory(this.currentCategory);
-    }
-
-    checkUserParticipation() {
-        const userConfirmed = localStorage.getItem('eldrexUserConfirmed');
-        const userSession = sessionStorage.getItem('eldrexSessionActive');
-        
-        if (!userConfirmed || !userSession) {
-            setTimeout(() => {
-                document.getElementById('userBanner').classList.add('active');
-            }, 1500);
-        } else {
-            this.isParticipating = true;
-        }
-    }
-
-    confirmParticipation() {
-        localStorage.setItem('eldrexUserConfirmed', 'true');
-        sessionStorage.setItem('eldrexSessionActive', 'true');
-        document.getElementById('userBanner').classList.remove('active');
-        this.isParticipating = true;
-        this.showToast('Welcome! You can now participate anonymously.', 'success');
-    }
-
-    setExploreOnlyMode() {
-        localStorage.setItem('eldrexExploreOnly', 'true');
-        document.getElementById('userBanner').classList.remove('active');
-        
-        // Disable interaction elements
-        const commentInput = document.getElementById('commentInput');
-        const sendBtn = document.getElementById('sendBtn');
-        
-        commentInput.disabled = true;
-        commentInput.placeholder = "Explore mode active - sign in to comment";
-        sendBtn.disabled = true;
-        
-        document.querySelectorAll('.action-btn').forEach(btn => {
-            btn.disabled = true;
-        });
-        
-        this.showToast('Explore mode activated. You can view but not interact.', 'warning');
-    }
-
-    async loadComments() {
         try {
-            this.showSkeletonLoading();
+            // Load initial batch quickly
+            const initialBatch = await feedAPI.getComments(5);
+            this.comments = initialBatch.comments;
             
-            const commentsRef = this.db.collection('comments')
-                .where('status', '==', 'active')
-                .orderBy('createdAt', 'desc')
-                .limit(50);
+            // Render initial batch immediately
+            this.renderComments();
             
-            // Real-time listener for comments
-            this.commentsUnsubscribe = commentsRef.onSnapshot(snapshot => {
-                this.comments = [];
-                snapshot.forEach(doc => {
-                    const commentData = doc.data();
-                    this.comments.push({
-                        id: doc.id,
-                        ...commentData,
-                        // Ensure all required fields exist
-                        likes: commentData.likes || 0,
-                        likedBy: commentData.likedBy || [],
-                        replyCount: commentData.replyCount || 0,
-                        reports: commentData.reports || 0
-                    });
-                });
-                
-                this.renderComments();
-                this.hideSkeletonLoading();
-                
-            }, error => {
-                console.error('Error in comments listener:', error);
-                this.hideSkeletonLoading();
-                this.showToast('Connection issue - reconnecting...', 'warning');
-                
-                // Retry after delay
-                setTimeout(() => this.loadComments(), 3000);
-            });
+            // Load remaining comments in background
+            this.loadRemainingComments(initialBatch.lastDoc);
             
         } catch (error) {
-            console.error('Error loading comments:', error);
-            this.hideSkeletonLoading();
+            console.error('Error loading initial comments:', error);
             this.showToast('Failed to load comments', 'error');
+            this.hideSkeletonLoading();
         }
     }
 
-    showSkeletonLoading() {
-        const container = document.getElementById('commentsContainer');
-        container.innerHTML = `
-            <div class="skeleton-comment">
-                <div class="comment-header">
-                    <div class="user-info">
-                        <div class="skeleton skeleton-avatar"></div>
-                        <div class="user-details">
-                            <div class="skeleton skeleton-text short"></div>
-                            <div class="skeleton skeleton-text medium"></div>
-                        </div>
-                    </div>
-                    <div class="skeleton skeleton-text short" style="width: 80px;"></div>
-                </div>
-                <div class="comment-content">
-                    <div class="skeleton skeleton-text long"></div>
-                    <div class="skeleton skeleton-text long"></div>
-                    <div class="skeleton skeleton-text medium"></div>
-                </div>
-                <div class="comment-actions">
-                    <div class="skeleton skeleton-text short" style="width: 40px;"></div>
-                    <div class="skeleton skeleton-text short" style="width: 40px;"></div>
-                    <div class="skeleton skeleton-text short" style="width: 60px;"></div>
-                </div>
-            </div>
-            <div class="skeleton-comment">
-                <div class="comment-header">
-                    <div class="user-info">
-                        <div class="skeleton skeleton-avatar"></div>
-                        <div class="user-details">
-                            <div class="skeleton skeleton-text short"></div>
-                            <div class="skeleton skeleton-text medium"></div>
-                        </div>
-                    </div>
-                    <div class="skeleton skeleton-text short" style="width: 80px;"></div>
-                </div>
-                <div class="comment-content">
-                    <div class="skeleton skeleton-text long"></div>
-                    <div class="skeleton skeleton-text long"></div>
-                    <div class="skeleton skeleton-text medium"></div>
-                </div>
-                <div class="comment-actions">
-                    <div class="skeleton skeleton-text short" style="width: 40px;"></div>
-                    <div class="skeleton skeleton-text short" style="width: 40px;"></div>
-                    <div class="skeleton skeleton-text short" style="width: 60px;"></div>
-                </div>
-            </div>
-        `;
-    }
-
-    hideSkeletonLoading() {
-        // Handled by renderComments
-    }
-
-    renderComments() {
-        const container = document.getElementById('commentsContainer');
-        const filteredComments = this.currentCategory === 'all' 
-            ? this.comments 
-            : this.comments.filter(comment => comment.category === this.currentCategory);
-        
-        if (filteredComments.length === 0) {
-            container.innerHTML = `
-                <div class="no-comments">
-                    <i class="fas fa-comments"></i>
-                    <h3>No comments yet</h3>
-                    <p>Be the first to share your thoughts!</p>
-                </div>
-            `;
-            return;
-        }
-        
-        container.innerHTML = filteredComments.map(comment => this.createCommentElement(comment)).join('');
-        
-        // Re-attach event listeners to action buttons
-        this.attachActionListeners();
-    }
-
-    createCommentElement(comment) {
-        const timestamp = comment.createdAt ? this.formatTimestamp(comment.createdAt.toDate()) : 'Recently';
-        const isSensitive = this.checkSensitiveContent(comment.content);
-        const userLiked = comment.likedBy && comment.likedBy.includes(this.currentUser.uid);
-        
-        return `
-            <div class="comment-card" data-comment-id="${comment.id}">
-                <div class="comment-header">
-                    <div class="user-info">
-                        <div class="avatar">${comment.userAvatar || 'A'}</div>
-                        <div class="user-details">
-                            <div class="username">${comment.userName || 'AnonymousUser'}</div>
-                            <div class="timestamp">${timestamp}</div>
-                        </div>
-                    </div>
-                    <div class="category-tag">${this.formatCategory(comment.category)}</div>
-                </div>
-                <div class="comment-content">
-                    <div class="comment-text ${isSensitive ? 'blurred' : ''}">${this.escapeHtml(comment.content)}</div>
-                    ${isSensitive ? '<div class="sensitive-warning"><i class="fas fa-eye-slash"></i> Sensitive content detected</div>' : ''}
-                    ${comment.linkPreview ? this.renderLinkPreview(comment.linkPreview) : ''}
-                </div>
-                <div class="comment-actions">
-                    <button class="action-btn like-btn ${userLiked ? 'liked' : ''}" 
-                            data-comment-id="${comment.id}" 
-                            ${!this.isParticipating ? 'disabled' : ''}>
-                        <i class="${userLiked ? 'fas' : 'far'} fa-heart"></i>
-                        <span>${comment.likes || 0}</span>
-                    </button>
-                    <button class="action-btn reply-btn" 
-                            data-comment-id="${comment.id}"
-                            ${!this.isParticipating ? 'disabled' : ''}>
-                        <i class="far fa-comment"></i>
-                        <span>${comment.replyCount || 0}</span>
-                    </button>
-                    <button class="action-btn report-btn" 
-                            data-comment-id="${comment.id}"
-                            ${!this.isParticipating ? 'disabled' : ''}>
-                        <i class="far fa-flag"></i>
-                        <span>Report</span>
-                    </button>
-                </div>
-            </div>
-        `;
-    }
-
-    renderLinkPreview(preview) {
-        if (!preview) return '';
-        
-        return `
-            <div class="link-preview">
-                <div class="link-preview-content">
-                    ${preview.title ? `<div class="link-preview-title">${this.escapeHtml(preview.title)}</div>` : ''}
-                    ${preview.description ? `<div class="link-preview-description">${this.escapeHtml(preview.description)}</div>` : ''}
-                    ${preview.url ? `<div class="link-preview-url">${this.escapeHtml(preview.url)}</div>` : ''}
-                </div>
-            </div>
-        `;
-    }
-
-    attachActionListeners() {
-        // Like buttons
-        document.querySelectorAll('.like-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                if (!this.isParticipating) {
-                    document.getElementById('userBanner').classList.add('active');
-                    return;
-                }
-                await this.handleLike(e.currentTarget);
-            });
-        });
-        
-        // Report buttons
-        document.querySelectorAll('.report-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                if (!this.isParticipating) {
-                    document.getElementById('userBanner').classList.add('active');
-                    return;
-                }
-                await this.handleReport(e.currentTarget);
-            });
-        });
-        
-        // Reply buttons
-        document.querySelectorAll('.reply-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                if (!this.isParticipating) {
-                    document.getElementById('userBanner').classList.add('active');
-                    return;
-                }
-                this.handleReply(e.currentTarget);
-            });
-        });
-    }
-
-    async handleLike(button) {
-        const commentId = button.dataset.commentId;
-        
+    async loadRemainingComments(lastDoc) {
         try {
-            button.disabled = true;
-            const result = await feedAPI.toggleLike(commentId, this.currentUser.uid);
+            const remainingBatch = await feedAPI.getComments(15, lastDoc);
+            this.comments = [...this.comments, ...remainingBatch.comments];
             
-            // Update UI immediately
-            const icon = button.querySelector('i');
-            const countSpan = button.querySelector('span');
-            const currentCount = parseInt(countSpan.textContent);
+            // Update UI with new comments
+            this.renderComments();
+            this.hideSkeletonLoading();
             
-            if (result) {
-                // Liked
-                icon.classList.remove('far');
-                icon.classList.add('fas', 'liked');
-                button.classList.add('liked');
-                countSpan.textContent = currentCount + 1;
-            } else {
-                // Unliked
-                icon.classList.remove('fas', 'liked');
-                icon.classList.add('far');
-                button.classList.remove('liked');
-                countSpan.textContent = currentCount - 1;
+            // Prefetch next batch if near bottom
+            this.setupScrollPrefetching(remainingBatch.lastDoc);
+            
+        } catch (error) {
+            console.error('Error loading remaining comments:', error);
+            this.hideSkeletonLoading();
+        }
+    }
+
+    setupScrollPrefetching(lastDoc) {
+        const container = document.getElementById('commentsContainer');
+        
+        const scrollHandler = () => {
+            const { scrollTop, scrollHeight, clientHeight } = container;
+            const scrollPosition = scrollTop + clientHeight;
+            
+            // Prefetch when 80% scrolled
+            if (scrollPosition >= scrollHeight * 0.8) {
+                this.prefetchNextBatch(lastDoc);
+                container.removeEventListener('scroll', scrollHandler);
             }
-            
-        } catch (error) {
-            console.error('Error toggling like:', error);
-            this.showToast('Failed to update like', 'error');
-        } finally {
-            button.disabled = false;
-        }
+        };
+        
+        container.addEventListener('scroll', scrollHandler, { passive: true });
     }
 
-    async handleReport(button) {
-        const commentId = button.dataset.commentId;
-        
-        const reason = prompt('Please specify the reason for reporting this content:');
-        if (!reason || reason.trim() === '') return;
-        
+    async prefetchNextBatch(lastDoc) {
         try {
-            button.disabled = true;
-            await feedAPI.reportContent(commentId, 'comment', reason.trim(), this.currentUser.uid);
-            this.showToast('Content reported successfully. Thank you for helping keep the community safe.', 'success');
+            const nextBatch = await feedAPI.prefetchNextComments(lastDoc, 10);
+            if (nextBatch) {
+                // Store prefetched data for quick access
+                this.prefetchedBatch = nextBatch;
+                console.log('Next comment batch prefetched');
+            }
         } catch (error) {
-            console.error('Error reporting content:', error);
-            this.showToast('Failed to report content', 'error');
-        } finally {
-            button.disabled = false;
+            console.error('Prefetch failed:', error);
         }
     }
 
-    handleReply(button) {
-        const commentId = button.dataset.commentId;
-        const replyText = prompt('Enter your reply:');
+    setupOptimizedCommentsListener() {
+        if (this.commentsUnsubscribe) {
+            this.commentsUnsubscribe();
+        }
+
+        this.commentsUnsubscribe = feedAPI.setupCommentsListener(
+            (snapshot) => {
+                this.handleCommentsUpdate(snapshot);
+            },
+            {
+                debounceMs: 200, // Reduce UI updates
+                limit: 30
+            }
+        );
+    }
+
+    handleCommentsUpdate(snapshot) {
+        const updates = [];
+        const removals = [];
         
-        if (!replyText || replyText.trim() === '') return;
-        
-        this.postReply(commentId, replyText.trim());
+        snapshot.docChanges().forEach((change) => {
+            if (change.type === 'added' || change.type === 'modified') {
+                const data = change.doc.data();
+                updates.push({
+                    id: change.doc.id,
+                    content: data.c,
+                    category: data.cat,
+                    userName: data.un,
+                    userAvatar: data.ua,
+                    userId: data.uid,
+                    isSensitive: data.sens,
+                    status: data.stat,
+                    likes: data.l,
+                    likedBy: data.lb || [],
+                    replyCount: data.rc,
+                    reports: data.rep,
+                    createdAt: data.ct,
+                    updatedAt: data.ut
+                });
+            } else if (change.type === 'removed') {
+                removals.push(change.doc.id);
+            }
+        });
+
+        // Batch update comments
+        this.batchUpdateComments(updates, removals);
+    }
+
+    batchUpdateComments(updates, removals) {
+        // Update existing comments
+        updates.forEach(update => {
+            const existingIndex = this.comments.findIndex(c => c.id === update.id);
+            if (existingIndex !== -1) {
+                this.comments[existingIndex] = update;
+            } else {
+                this.comments.unshift(update); // New comments at top
+            }
+        });
+
+        // Remove deleted comments
+        this.comments = this.comments.filter(comment => 
+            !removals.includes(comment.id)
+        );
+
+        // Throttled render
+        this.throttledRender();
+    }
+
+    throttledRender = this.debounce(() => {
+        this.renderComments();
+    }, 100);
+
+    debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
     }
 
     async postComment() {
+        const startTime = performance.now();
         const content = document.getElementById('commentInput').value.trim();
         const category = document.getElementById('categorySelect').value;
         
         if (!content) {
             this.showToast('Please enter a comment', 'warning');
-            return;
-        }
-        
-        if (content.length > 1000) {
-            this.showToast('Comment too long. Maximum 1000 characters.', 'warning');
             return;
         }
         
@@ -611,18 +334,20 @@ class EldrexFeed {
         const commentInput = document.getElementById('commentInput');
         
         try {
+            // Optimistic UI update
+            const tempComment = this.createOptimisticComment(content, category);
+            this.comments.unshift(tempComment);
+            this.renderComments();
+            
             sendBtn.disabled = true;
             sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
             commentInput.disabled = true;
             
-            // Get user profile
+            // Get user profile from cache if possible
             const userProfile = await this.getUserProfile();
             
             // Check for sensitive content
             const isSensitive = this.checkSensitiveContent(content);
-            
-            // Extract link preview
-            const linkPreview = this.extractLinkPreview(content);
             
             // Post to Firebase
             await feedAPI.postComment({
@@ -632,23 +357,26 @@ class EldrexFeed {
                 userAvatar: userProfile.avatarLetter,
                 userId: this.currentUser.uid,
                 isSensitive,
-                linkPreview,
-                status: 'active',
-                likes: 0,
-                likedBy: [],
-                replyCount: 0,
-                reports: 0
+                status: 'active'
             });
+            
+            // Remove optimistic comment
+            this.comments = this.comments.filter(c => c.id !== 'temp');
             
             // Clear input
             commentInput.value = '';
             commentInput.style.height = 'auto';
             
-            // Show success
+            const endTime = performance.now();
+            this.performance.interactionTimes.push(endTime - startTime);
+            
             this.showToast('Comment posted successfully', 'success');
             
         } catch (error) {
             console.error('Error posting comment:', error);
+            // Revert optimistic update
+            this.comments = this.comments.filter(c => c.id !== 'temp');
+            this.renderComments();
             this.showToast('Failed to post comment. Please try again.', 'error');
         } finally {
             sendBtn.disabled = false;
@@ -657,224 +385,168 @@ class EldrexFeed {
         }
     }
 
-    async postReply(commentId, content) {
-        try {
-            const userProfile = await this.getUserProfile();
-            
-            await feedAPI.postReply(commentId, {
-                content,
-                userName: userProfile.displayName,
-                userAvatar: userProfile.avatarLetter,
-                userId: this.currentUser.uid,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                likes: 0,
-                likedBy: []
-            });
-            
-            this.showToast('Reply posted successfully', 'success');
-            
-        } catch (error) {
-            console.error('Error posting reply:', error);
-            this.showToast('Failed to post reply', 'error');
-        }
+    createOptimisticComment(content, category) {
+        return {
+            id: 'temp',
+            content,
+            category,
+            userName: 'Posting...',
+            userAvatar: 'A',
+            userId: this.currentUser.uid,
+            isSensitive: false,
+            status: 'pending',
+            likes: 0,
+            likedBy: [],
+            replyCount: 0,
+            reports: 0,
+            createdAt: new Date(),
+            updatedAt: new Date()
+        };
     }
 
     async getUserProfile() {
-        try {
-            const userDoc = await this.db.collection('anonymousUsers').doc(this.currentUser.uid).get();
-            return userDoc.exists ? userDoc.data() : { displayName: 'AnonymousUser', avatarLetter: 'A' };
-        } catch (error) {
-            console.error('Error getting user profile:', error);
-            return { displayName: 'AnonymousUser', avatarLetter: 'A' };
+        // Try cache first, then API
+        let profile = await feedAPI.getUserProfile(this.currentUser.uid);
+        
+        if (!profile) {
+            // Generate new profile
+            profile = await this.generateAnonymousProfile();
+        }
+        
+        return profile;
+    }
+
+    // Enhanced security setup
+    setupSecurity() {
+        const allowedDomain = 'eldrex.landecs.org';
+        const currentDomain = window.location.hostname;
+        
+        if (currentDomain !== allowedDomain && 
+            currentDomain !== 'localhost' && 
+            !currentDomain.includes('127.0.0.1') &&
+            !currentDomain.includes('feedback-e7037')) {
+            
+            this.enableStrictSecurityMode();
+            throw new Error('Unauthorized domain access');
         }
     }
 
-    checkSensitiveContent(text) {
-        const sensitiveWords = [
-            'hate', 'violence', 'attack', 'harm', 'abuse', 'kill', 'hurt', 'assault',
-            'discrimination', 'harassment', 'threat', 'danger', 'dangerous', 'weapon',
-            'offensive', 'inappropriate', 'explicit', 'racist', 'sexist', 'bigot'
-        ];
+    enableStrictSecurityMode() {
+        document.getElementById('securityNotice').classList.add('active');
         
-        const lowerText = text.toLowerCase();
-        return sensitiveWords.some(word => {
-            const regex = new RegExp(`\\b${word}\\b`, 'i');
-            return regex.test(lowerText);
+        // Advanced dev tools prevention
+        this.preventAdvancedDevTools();
+        
+        // Block all interactions
+        document.body.style.pointerEvents = 'none';
+        
+        if (window.self !== window.top) {
+            window.top.location.href = 'https://eldrex.landecs.org/404';
+        }
+    }
+
+    preventAdvancedDevTools() {
+        // Comprehensive dev tools detection
+        const blocker = setInterval(() => {
+            const widthThreshold = window.outerWidth - window.innerWidth > 160;
+            const heightThreshold = window.outerHeight - window.innerHeight > 160;
+            
+            if (widthThreshold || heightThreshold) {
+                document.getElementById('securityNotice').classList.add('active');
+                clearInterval(blocker);
+            }
+        }, 1000);
+        
+        // Prevent console usage
+        Object.defineProperty(window, 'console', {
+            value: {},
+            writable: false,
+            configurable: false
         });
     }
 
-    extractLinkPreview(text) {
-        const urlRegex = /(https?:\/\/[^\s]+)/g;
-        const matches = text.match(urlRegex);
+    // Performance monitoring
+    getPerformanceMetrics() {
+        const metrics = feedAPI.getPerformanceMetrics();
         
-        if (matches && matches.length > 0) {
-            return {
-                url: matches[0],
-                // In a real implementation, you'd fetch the actual preview
-                // For now, we'll just return the URL
-                title: 'External Link',
-                description: 'Click to visit this link'
-            };
-        }
-        
-        return null;
-    }
-
-    filterCommentsByCategory(category) {
-        this.currentCategory = category;
-        this.renderComments();
-    }
-
-    formatCategory(category) {
-        const categories = {
-            improvement: 'Improvement',
-            recommendation: 'Recommendation',
-            request: 'Request',
-            report: 'Report',
-            others: 'Others'
+        return {
+            ...metrics,
+            averageLoadTime: this.performance.loadTimes.reduce((a, b) => a + b, 0) / this.performance.loadTimes.length,
+            averageInteractionTime: this.performance.interactionTimes.reduce((a, b) => a + b, 0) / this.performance.interactionTimes.length,
+            commentCount: this.comments.length,
+            cacheSize: feedAPI.cache.comments.size
         };
-        return categories[category] || category;
     }
 
-    formatTimestamp(timestamp) {
-        const now = new Date();
-        const diff = now - timestamp;
-        
-        const minute = 60 * 1000;
-        const hour = minute * 60;
-        const day = hour * 24;
-        const week = day * 7;
-        
-        if (diff < minute) return 'Just now';
-        if (diff < hour) return `${Math.floor(diff / minute)}m ago`;
-        if (diff < day) return `${Math.floor(diff / hour)}h ago`;
-        if (diff < week) return `${Math.floor(diff / day)}d ago`;
-        
-        return timestamp.toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric',
-            year: timestamp.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
-        });
-    }
-
-    escapeHtml(unsafe) {
-        return unsafe
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    }
-
-    showToast(message, type = 'success') {
-        // Remove existing toasts
-        document.querySelectorAll('.toast').forEach(toast => toast.remove());
-        
-        const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
-        toast.innerHTML = `
-            <div class="toast-icon">
-                <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'exclamation-triangle' : 'info'}"></i>
-            </div>
-            <div class="toast-message">${message}</div>
-        `;
-        
-        document.body.appendChild(toast);
-        
-        // Animate in
-        setTimeout(() => toast.classList.add('active'), 10);
-        
-        // Auto remove
-        setTimeout(() => {
-            toast.classList.remove('active');
-            setTimeout(() => {
-                if (toast.parentNode) {
-                    toast.parentNode.removeChild(toast);
-                }
-            }, 500);
-        }, 4000);
-    }
-
-    // Settings methods
-    async changeNickname() {
-        const newName = prompt('Enter new nickname (3-20 characters):');
-        if (!newName || newName.trim().length < 3 || newName.trim().length > 20) {
-            this.showToast('Nickname must be between 3-20 characters', 'warning');
-            return;
-        }
-        
-        try {
-            await this.db.collection('anonymousUsers').doc(this.currentUser.uid).update({
-                displayName: newName.trim()
-            });
-            
-            this.showToast('Nickname updated successfully', 'success');
-            this.closeSettings();
-            
-        } catch (error) {
-            console.error('Error updating nickname:', error);
-            this.showToast('Failed to update nickname', 'error');
-        }
-    }
-
-    showContentFilters() {
-        alert('Content filter settings would be implemented here.\n\nYou can customize what type of content you want to see and set sensitivity filters.');
-        this.closeSettings();
-    }
-
-    showPrivacyInfo() {
-        const privacyInfo = `
-Eldrex Privacy Information:
-
-• Complete Anonymity: No personal data is ever collected or stored
-• No Tracking: We don't track your activity across sessions
-• Auto-Expiring: Comments may be automatically removed after 90 days
-• Content Moderation: AI-assisted filtering for inappropriate content
-• No Cookies: We don't use tracking cookies or persistent identifiers
-• Open Source: Platform code is transparent and verifiable
-
-Your privacy and security are our top priority.`;
-
-        alert(privacyInfo);
-        this.closeSettings();
-    }
-
-    reportProblem() {
-        const problem = prompt('Please describe the problem or issue you encountered:');
-        if (!problem || problem.trim() === '') return;
-        
-        // In production, this would send to a support system
-        console.log('Problem reported:', problem.trim());
-        
-        // Store in Firebase for tracking
-        this.db.collection('problemReports').add({
-            description: problem.trim(),
-            userId: this.currentUser.uid,
-            userAgent: navigator.userAgent,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-            url: window.location.href
-        }).catch(error => {
-            console.error('Error saving problem report:', error);
-        });
-        
-        this.showToast('Problem reported successfully. Thank you for your feedback!', 'success');
-        this.closeSettings();
-    }
-
-    // Cleanup on page unload
-    destroy() {
+    // Reconnection logic
+    reconnectListeners() {
         if (this.commentsUnsubscribe) {
             this.commentsUnsubscribe();
+        }
+        this.setupOptimizedCommentsListener();
+    }
+
+    // Memory management
+    cleanup() {
+        if (this.commentsUnsubscribe) {
+            this.commentsUnsubscribe();
+        }
+        
+        // Clear large data structures
+        this.comments = [];
+        this.listeners.clear();
+        
+        // Clear cache if memory is high
+        if (performance.memory && performance.memory.usedJSHeapSize > 500000000) {
+            feedAPI.clearCache();
+        }
+    }
+
+    destroy() {
+        this.cleanup();
+        
+        // Sign out user
+        if (this.auth) {
+            this.auth.signOut().catch(console.error);
         }
     }
 }
 
-// Initialize the platform when DOM is loaded
+// Initialize platform with error boundary
 let eldrexFeed;
 
-document.addEventListener('DOMContentLoaded', () => {
-    eldrexFeed = new EldrexFeed();
-});
+const initializePlatform = async () => {
+    try {
+        eldrexFeed = new EldrexFeed();
+        window.eldrexFeed = eldrexFeed; // Global access for debugging
+        
+        // Export performance metrics to global scope
+        window.getEldrexMetrics = () => eldrexFeed.getPerformanceMetrics();
+        
+    } catch (error) {
+        console.error('Platform initialization failed:', error);
+        
+        // Show user-friendly error
+        document.getElementById('commentsContainer').innerHTML = `
+            <div class="no-comments">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h3>Platform Unavailable</h3>
+                <p>We're experiencing technical issues. Please try refreshing the page.</p>
+                <button onclick="window.location.reload()" style="
+                    margin-top: 1rem;
+                    padding: 0.5rem 1rem;
+                    background: var(--primary);
+                    color: white;
+                    border: none;
+                    border-radius: 0.5rem;
+                    cursor: pointer;
+                ">Refresh Page</button>
+            </div>
+        `;
+    }
+};
+
+document.addEventListener('DOMContentLoaded', initializePlatform);
 
 // Cleanup on page unload
 window.addEventListener('beforeunload', () => {
@@ -883,7 +555,20 @@ window.addEventListener('beforeunload', () => {
     }
 });
 
-// Export for potential module usage
+// Handle page visibility changes for performance
+document.addEventListener('visibilitychange', () => {
+    if (eldrexFeed) {
+        if (document.hidden) {
+            // Page is hidden, reduce activity
+            eldrexFeed.cleanup();
+        } else {
+            // Page is visible, restore activity
+            eldrexFeed.reconnectListeners();
+        }
+    }
+});
+
+// Export for module usage
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = EldrexFeed;
 }
