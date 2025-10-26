@@ -1,2 +1,3 @@
-# Ignore API script
-feed_api.js
+# Ignore API scripts
+
+api/feed_api.js
