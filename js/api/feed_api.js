@@ -1,15 +1,18 @@
 // Firebase Configuration and API Functions
 // This file contains sensitive API keys and should be added to .gitignore
 
-// Firebase Configuration - REPLACE WITH YOUR ACTUAL FIREBASE CONFIG
-const firebaseConfig = {
-    apiKey: "YOUR_FIREBASE_API_KEY",
-    authDomain: "YOUR_FIREBASE_AUTH_DOMAIN",
-    projectId: "YOUR_FIREBASE_PROJECT_ID",
-    storageBucket: "YOUR_FIREBASE_STORAGE_BUCKET",
-    messagingSenderId: "YOUR_FIREBASE_MESSAGING_SENDER_ID",
-    appId: "YOUR_FIREBASE_APP_ID"
-};
+// Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBy1ny3eqjU6MZlZjmvhnzW3PvZrUFUzZ0",
+            authDomain: "wishwall-53e7f.firebaseapp.com",
+            databaseURL: "https://wishwall-53e7f-default-rtdb.firebaseio.com",
+            projectId: "wishwall-53e7f",
+            storageBucket: "wishwall-53e7f.firebasestorage.app",
+            messagingSenderId: "937910869393",
+            appId: "1:937910869393:web:ec5b7b1a3d48fba7540e30",
+            measurementId: "G-KXHX991S6N"
+        };
+        
 
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
