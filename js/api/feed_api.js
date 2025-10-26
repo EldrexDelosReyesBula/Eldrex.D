@@ -13,17 +13,21 @@ const firebaseConfig = {
 
 
 // Initialize Firebase
-firebase.initializeApp(firebaseConfig);
+try {
+    firebase.initializeApp(firebaseConfig);
+    console.log('Firebase initialized successfully');
+} catch (error) {
+    console.error('Firebase initialization error:', error);
+}
+
 const db = firebase.firestore();
 const auth = firebase.auth();
-const rtdb = firebase.database();
 
 // Comprehensive sensitive words list for client-side filtering
 const sensitiveWords = [
     // Profanity and offensive language
     'fuck', 'shit', 'asshole', 'bitch', 'bastard', 'dick', 'pussy', 'cunt',
     'whore', 'slut', 'retard', 'fag', 'faggot', 'nigger', 'nigga', 'chink',
-    'spic', 'kike', 'cracker', 'gook', 'wetback',
     
     // Harassment and hate speech
     'kill', 'murder', 'death', 'die', 'suicide', 'harm', 'hurt', 'attack',
@@ -43,40 +47,15 @@ const sensitiveWords = [
     'meth', 'weed', 'marijuana', 'alcohol', 'drunk', 'drinking'
 ];
 
-// Rate limiting utility
-const RateLimiter = {
-    async checkRateLimit(userId, action, limit = 10, windowMs = 60000) {
-        try {
-            const now = Date.now();
-            const windowStart = now - windowMs;
-            
-            const rateLimitRef = rtdb.ref(`rateLimits/${userId}/${action}`);
-            const snapshot = await rateLimitRef.once('value');
-            const data = snapshot.val() || { count: 0, lastAction: 0 };
-            
-            // Reset count if outside the time window
-            if (data.lastAction < windowStart) {
-                data.count = 0;
-            }
-            
-            // Check if limit exceeded
-            if (data.count >= limit) {
-                return { allowed: false, remaining: 0, resetTime: data.lastAction + windowMs };
-            }
-            
-            // Update rate limit
-            await rateLimitRef.update({
-                count: data.count + 1,
-                lastAction: now
-            });
-            
-            return { allowed: true, remaining: limit - (data.count + 1), resetTime: now + windowMs };
-        } catch (error) {
-            console.error('Rate limit check error:', error);
-            return { allowed: true, remaining: limit, resetTime: Date.now() + windowMs };
-        }
+// Generate a unique user ID (for anonymous tracking)
+function getUserId() {
+    let userId = localStorage.getItem('userId');
+    if (!userId) {
+        userId = 'user_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('userId', userId);
     }
-};
+    return userId;
+}
 
 // API Functions
 const EldrexAPI = {
@@ -96,16 +75,9 @@ const EldrexAPI = {
         });
     },
 
-    // Get comments from Firestore with rate limiting
+    // Get comments from Firestore
     async getComments(category = 'all') {
         try {
-            const userId = getUserId();
-            const rateLimit = await RateLimiter.checkRateLimit(userId, 'comment_read', 60, 60000); // 60 reads per minute
-            
-            if (!rateLimit.allowed) {
-                throw new Error('Rate limit exceeded for reading comments');
-            }
-            
             let query = db.collection('comments')
                 .where('approved', '==', true)
                 .orderBy('timestamp', 'desc')
@@ -131,9 +103,6 @@ const EldrexAPI = {
                 comments.push(comment);
             });
             
-            // Log analytics
-            this.logAnalytics('comment_read', { category, count: comments.length });
-            
             return comments;
         } catch (error) {
             console.error('Error getting comments:', error);
@@ -141,17 +110,9 @@ const EldrexAPI = {
         }
     },
 
-    // Add comment to Firestore with rate limiting and validation
+    // Add comment to Firestore
     async addComment(commentData) {
         try {
-            const userId = getUserId();
-            
-            // Rate limiting
-            const rateLimit = await RateLimiter.checkRateLimit(userId, 'comment_post', 5, 60000); // 5 posts per minute
-            if (!rateLimit.allowed) {
-                throw new Error('Rate limit exceeded for posting comments');
-            }
-            
             // Input validation
             if (!commentData.content || commentData.content.trim().length === 0) {
                 throw new Error('Comment content cannot be empty');
@@ -181,20 +142,10 @@ const EldrexAPI = {
                 replies: [],
                 reported: false,
                 reportCount: 0,
-                userId: userId // Track user for moderation purposes
+                userId: getUserId() // Track user for moderation purposes
             };
             
             const docRef = await db.collection('comments').add(commentWithMetadata);
-            
-            // Update real-time database statistics
-            this.updateStatistics('comment_post');
-            
-            // Log analytics
-            this.logAnalytics('comment_post', { 
-                category: commentData.category,
-                hasSensitiveContent: moderationResult.sensitive 
-            });
-            
             return docRef.id;
         } catch (error) {
             console.error('Error adding comment:', error);
@@ -202,17 +153,9 @@ const EldrexAPI = {
         }
     },
 
-    // Add reply to comment with rate limiting
+    // Add reply to comment
     async addReply(commentId, replyData) {
         try {
-            const userId = getUserId();
-            
-            // Rate limiting
-            const rateLimit = await RateLimiter.checkRateLimit(userId, 'reply_post', 10, 60000); // 10 replies per minute
-            if (!rateLimit.allowed) {
-                throw new Error('Rate limit exceeded for posting replies');
-            }
-            
             // Input validation
             if (!replyData.content || replyData.content.trim().length === 0) {
                 throw new Error('Reply content cannot be empty');
@@ -230,15 +173,12 @@ const EldrexAPI = {
                 nickname: replyData.nickname ? replyData.nickname.trim().substring(0, 20) : null,
                 sensitive: moderationResult.sensitive,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                userId: userId
+                userId: getUserId()
             };
             
             await db.collection('comments').doc(commentId).update({
                 replies: firebase.firestore.FieldValue.arrayUnion(replyWithMetadata)
             });
-            
-            // Log analytics
-            this.logAnalytics('reply', { commentId });
             
             return true;
         } catch (error) {
@@ -247,15 +187,9 @@ const EldrexAPI = {
         }
     },
 
-    // Toggle like on comment with rate limiting
+    // Toggle like on comment
     async toggleLike(commentId, userId) {
         try {
-            // Rate limiting
-            const rateLimit = await RateLimiter.checkRateLimit(userId, 'like', 30, 60000); // 30 likes per minute
-            if (!rateLimit.allowed) {
-                throw new Error('Rate limit exceeded for liking comments');
-            }
-            
             const commentRef = db.collection('comments').doc(commentId);
             const commentDoc = await commentRef.get();
             
@@ -273,10 +207,6 @@ const EldrexAPI = {
                     likes: firebase.firestore.FieldValue.increment(-1),
                     userLikes: firebase.firestore.FieldValue.arrayRemove(userId)
                 });
-                
-                // Log analytics
-                this.logAnalytics('unlike', { commentId });
-                
                 return { liked: false, likes: comment.likes - 1 };
             } else {
                 // Like
@@ -284,10 +214,6 @@ const EldrexAPI = {
                     likes: firebase.firestore.FieldValue.increment(1),
                     userLikes: firebase.firestore.FieldValue.arrayUnion(userId)
                 });
-                
-                // Log analytics
-                this.logAnalytics('like', { commentId });
-                
                 return { liked: true, likes: comment.likes + 1 };
             }
         } catch (error) {
@@ -296,27 +222,10 @@ const EldrexAPI = {
         }
     },
 
-    // Report comment with rate limiting
+    // Report comment
     async reportComment(commentId, reportData) {
         try {
             const userId = getUserId();
-            
-            // Rate limiting
-            const rateLimit = await RateLimiter.checkRateLimit(userId, 'report', 5, 60000); // 5 reports per minute
-            if (!rateLimit.allowed) {
-                throw new Error('Rate limit exceeded for reporting comments');
-            }
-            
-            // Check if user already reported this comment
-            const reportsSnapshot = await db.collection('reports')
-                .where('commentId', '==', commentId)
-                .where('reporterId', '==', userId)
-                .limit(1)
-                .get();
-            
-            if (!reportsSnapshot.empty) {
-                throw new Error('You have already reported this comment');
-            }
             
             const report = {
                 commentId: commentId,
@@ -336,9 +245,6 @@ const EldrexAPI = {
                 reported: true
             });
             
-            // Log analytics
-            this.logAnalytics('report', { commentId, reason: reportData.reason });
-            
             return true;
         } catch (error) {
             console.error('Error reporting comment:', error);
@@ -348,135 +254,44 @@ const EldrexAPI = {
 
     // Real-time listener for comments
     setupCommentsListener(category, callback) {
-        let query = db.collection('comments')
-            .where('approved', '==', true)
-            .orderBy('timestamp', 'desc')
-            .limit(50);
-        
-        if (category !== 'all') {
-            query = query.where('category', '==', category);
-        }
-        
-        return query.onSnapshot(snapshot => {
-            const comments = [];
-            snapshot.forEach(doc => {
-                const comment = doc.data();
-                comment.id = doc.id;
-                
-                // Ensure all required fields exist
-                comment.likes = comment.likes || 0;
-                comment.userLikes = comment.userLikes || [];
-                comment.replies = comment.replies || [];
-                comment.reportCount = comment.reportCount || 0;
-                
-                comments.push(comment);
-            });
-            callback(comments);
-        }, error => {
-            console.error('Comments listener error:', error);
-            callback(null, error);
-        });
-    },
-
-    // Analytics logging
-    async logAnalytics(type, data = {}) {
         try {
-            const userId = getUserId();
+            let query = db.collection('comments')
+                .where('approved', '==', true)
+                .orderBy('timestamp', 'desc')
+                .limit(50);
             
-            await db.collection('analytics').add({
-                type: type,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                userId: userId,
-                data: data,
-                userAgent: navigator.userAgent,
-                platform: navigator.platform
-            });
-        } catch (error) {
-            console.error('Error logging analytics:', error);
-            // Don't throw error for analytics failures
-        }
-    },
-
-    // Update real-time statistics
-    async updateStatistics(action) {
-        try {
-            const statsRef = rtdb.ref('statistics');
-            
-            switch (action) {
-                case 'comment_post':
-                    await statsRef.child('totalComments').transaction(current => (current || 0) + 1);
-                    break;
-                case 'like':
-                    await statsRef.child('totalLikes').transaction(current => (current || 0) + 1);
-                    break;
-                case 'reply':
-                    await statsRef.child('totalReplies').transaction(current => (current || 0) + 1);
-                    break;
+            if (category !== 'all') {
+                query = query.where('category', '==', category);
             }
             
-            // Update active users count
-            const presenceRef = rtdb.ref('presence');
-            const presenceSnapshot = await presenceRef.once('value');
-            const activeUsers = Object.keys(presenceSnapshot.val() || {}).length;
-            
-            await statsRef.update({
-                activeUsers: activeUsers,
-                lastUpdate: Date.now()
+            return query.onSnapshot(snapshot => {
+                const comments = [];
+                snapshot.forEach(doc => {
+                    const comment = doc.data();
+                    comment.id = doc.id;
+                    
+                    // Ensure all required fields exist
+                    comment.likes = comment.likes || 0;
+                    comment.userLikes = comment.userLikes || [];
+                    comment.replies = comment.replies || [];
+                    comment.reportCount = comment.reportCount || 0;
+                    
+                    comments.push(comment);
+                });
+                callback(comments);
+            }, error => {
+                console.error('Comments listener error:', error);
+                callback(null, error);
             });
-            
         } catch (error) {
-            console.error('Error updating statistics:', error);
-            // Don't throw error for statistics failures
-        }
-    },
-
-    // Get platform statistics
-    async getStatistics() {
-        try {
-            const statsRef = rtdb.ref('statistics');
-            const snapshot = await statsRef.once('value');
-            return snapshot.val() || {};
-        } catch (error) {
-            console.error('Error getting statistics:', error);
-            return {};
-        }
-    },
-
-    // Check system status
-    async getSystemStatus() {
-        try {
-            const systemRef = rtdb.ref('system');
-            const snapshot = await systemRef.once('value');
-            return snapshot.val() || { status: 'online', message: '' };
-        } catch (error) {
-            console.error('Error getting system status:', error);
-            return { status: 'online', message: '' };
+            console.error('Error setting up comments listener:', error);
+            callback(null, error);
         }
     }
 };
 
-// Initialize presence system
-function initializePresence() {
-    const userId = getUserId();
-    const presenceRef = rtdb.ref('presence/' + userId);
-    
-    // Set user as online
-    presenceRef.set('online');
-    
-    // Set user as away when window loses focus
-    document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
-            presenceRef.set('away');
-        } else {
-            presenceRef.set('online');
-        }
-    });
-    
-    // Set user as offline when window closes
-    window.addEventListener('beforeunload', () => {
-        presenceRef.set('offline');
-    });
-}
+// Make EldrexAPI globally available
+window.EldrexAPI = EldrexAPI;
+window.getUserId = getUserId;
 
-// Initialize presence when API is loaded
-setTimeout(initializePresence, 1000);
+console.log('EldrexAPI loaded successfully');
