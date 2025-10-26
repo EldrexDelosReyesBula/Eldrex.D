@@ -74,20 +74,32 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Initialize the app
 function init() {
+    console.log('Initializing Eldrex platform...');
     setupEventListeners();
-    loadComments();
-    showSkeletonLoading();
+    
+    // Wait for Firebase to initialize before loading comments
+    setTimeout(() => {
+        if (typeof EldrexAPI !== 'undefined') {
+            loadComments();
+            showSkeletonLoading();
+        } else {
+            console.error('EldrexAPI not loaded');
+            showToast('Error loading platform', 'error');
+        }
+    }, 1000);
     
     // Check if user needs to set nickname
     if (!localStorage.getItem('nicknameSet')) {
         setTimeout(() => {
             nicknameModal.classList.add('active');
-        }, 1000);
+        }, 1500);
     }
 }
 
 // Set up event listeners
 function setupEventListeners() {
+    console.log('Setting up event listeners...');
+    
     // Category filter
     categories.forEach(category => {
         category.addEventListener('click', () => {
@@ -203,28 +215,45 @@ function setupEventListeners() {
 
 // Load comments using API
 function loadComments() {
+    console.log('Loading comments for category:', currentCategory);
+    
     // Unsubscribe from previous listener
     if (unsubscribeComments) {
         unsubscribeComments();
     }
     
-    // Set up real-time listener
-    unsubscribeComments = EldrexAPI.setupCommentsListener(currentCategory, (comments, error) => {
-        if (error) {
-            console.error('Error loading comments:', error);
-            showToast('Error loading comments', 'error');
-            hideSkeletonLoading();
-            return;
-        }
-        
-        window.comments = comments;
+    // Check if EldrexAPI is available
+    if (typeof EldrexAPI === 'undefined') {
+        console.error('EldrexAPI is not defined');
+        showToast('Error loading comments', 'error');
         hideSkeletonLoading();
-        renderComments();
-    });
+        return;
+    }
+    
+    // Set up real-time listener
+    try {
+        unsubscribeComments = EldrexAPI.setupCommentsListener(currentCategory, (comments, error) => {
+            if (error) {
+                console.error('Error loading comments:', error);
+                showToast('Error loading comments', 'error');
+                hideSkeletonLoading();
+                return;
+            }
+            
+            window.comments = comments;
+            hideSkeletonLoading();
+            renderComments();
+        });
+    } catch (error) {
+        console.error('Error setting up comments listener:', error);
+        showToast('Error loading comments', 'error');
+        hideSkeletonLoading();
+    }
 }
 
 // Render comments based on current filter
 function renderComments() {
+    console.log('Rendering comments:', comments?.length);
     commentsContainer.innerHTML = '';
     
     if (!comments || comments.length === 0) {
@@ -262,7 +291,8 @@ function createCommentElement(comment) {
     const timestamp = formatTimestamp(comment.timestamp);
     
     // Check if current user liked this comment
-    const userLiked = comment.userLikes && comment.userLikes.includes(getUserId());
+    const userId = getUserId();
+    const userLiked = comment.userLikes && comment.userLikes.includes(userId);
     
     commentElement.innerHTML = `
         <div class="comment-header">
@@ -351,7 +381,7 @@ async function addComment() {
         showToast('Comment posted successfully', 'success');
     } catch (error) {
         console.error('Error adding comment:', error);
-        showToast('Error posting comment', 'error');
+        showToast('Error posting comment: ' + error.message, 'error');
     }
 }
 
@@ -375,18 +405,19 @@ async function addReply(commentId) {
         showToast('Reply posted successfully', 'success');
     } catch (error) {
         console.error('Error adding reply:', error);
-        showToast('Error posting reply', 'error');
+        showToast('Error posting reply: ' + error.message, 'error');
     }
 }
 
 // Toggle like using API
 async function toggleLike(commentId) {
     try {
-        await EldrexAPI.toggleLike(commentId, getUserId());
+        const userId = getUserId();
+        await EldrexAPI.toggleLike(commentId, userId);
         // Real-time listener will update the UI automatically
     } catch (error) {
         console.error('Error toggling like:', error);
-        showToast('Error updating like', 'error');
+        showToast('Error updating like: ' + error.message, 'error');
     }
 }
 
@@ -420,7 +451,7 @@ async function submitReportComment(commentId, reason, details) {
         showToast('Comment reported successfully', 'success');
     } catch (error) {
         console.error('Error reporting comment:', error);
-        showToast('Error reporting comment', 'error');
+        showToast('Error reporting comment: ' + error.message, 'error');
     }
 }
 
@@ -449,29 +480,23 @@ function stringToColor(str) {
 function formatTimestamp(timestamp) {
     if (!timestamp) return 'Just now';
     
-    const now = new Date();
-    const commentTime = timestamp.toDate();
-    const diffMs = now - commentTime;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-    
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins} min ago`;
-    if (diffHours < 24) return `${diffHours} hr ago`;
-    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-    
-    return commentTime.toLocaleDateString();
-}
-
-// Generate a unique user ID (for anonymous tracking)
-function getUserId() {
-    let userId = localStorage.getItem('userId');
-    if (!userId) {
-        userId = 'user_' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem('userId', userId);
+    try {
+        const now = new Date();
+        const commentTime = timestamp.toDate();
+        const diffMs = now - commentTime;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+        
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins} min ago`;
+        if (diffHours < 24) return `${diffHours} hr ago`;
+        if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+        
+        return commentTime.toLocaleDateString();
+    } catch (error) {
+        return 'Recently';
     }
-    return userId;
 }
 
 // Show skeleton loading
