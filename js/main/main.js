@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', function() {
-    initPremiumPhysics();
+    initPremiumPhysicsEngine();
     initPremiumBottomSheets();
     initEnhancedLinkAnimations();
     initContentProtection();
@@ -11,13 +11,26 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 150);
 });
 
-function initPremiumPhysics() {
+function initPremiumPhysicsEngine() {
     if (typeof gsap !== 'undefined') {
         gsap.config({
             nullTargetWarn: false,
             force3D: true
         });
         gsap.ticker.lagSmoothing(1000, 16);
+        
+        // Register custom physics easing
+        gsap.registerEase("springSlowReturn", function(progress) {
+            return 1 - Math.pow(1 - progress, 3) * Math.cos(progress * Math.PI * 2.5);
+        });
+        
+        gsap.registerEase("physicsRecoil", function(progress) {
+            if (progress < 0.3) {
+                return progress * (1 / 0.3);
+            } else {
+                return 1 - Math.pow(1 - ((progress - 0.3) * (1 / 0.7)), 2) * 0.3;
+            }
+        });
     }
 }
 
@@ -33,142 +46,202 @@ function initPremiumEntranceAnimations() {
         masterTimeline.fromTo(profilePicture, {
             scale: 0.8,
             opacity: 0,
-            rotationY: -10,
-            filter: "blur(10px)"
+            rotationY: -15,
+            rotationX: 5,
+            z: -50,
+            filter: "blur(12px)"
         }, {
             scale: 1,
             opacity: 1,
             rotationY: 0,
+            rotationX: 0,
+            z: 0,
             filter: "blur(0px)",
-            duration: 1.4,
-            ease: "elastic.out(1.1, 0.5)",
+            duration: 1.6,
+            ease: "elastic.out(1.2, 0.4)",
             clearProps: "all"
         }, 0);
     }
     
     if (linkItems.length > 0) {
-        masterTimeline.fromTo(linkItems, {
+        // Sort link items from top to bottom
+        const sortedLinkItems = Array.from(linkItems).sort((a, b) => {
+            const rectA = a.getBoundingClientRect();
+            const rectB = b.getBoundingClientRect();
+            return rectA.top - rectB.top;
+        });
+        
+        masterTimeline.fromTo(sortedLinkItems, {
             opacity: 0,
-            y: 60,
-            scale: 0.9
+            y: 80,
+            scale: 0.85,
+            rotationX: -10,
+            z: -30
         }, {
             opacity: 1,
             y: 0,
             scale: 1,
-            duration: 0.9,
+            rotationX: 0,
+            z: 0,
+            duration: 1.1,
             stagger: {
-                amount: 0.6,
+                amount: 0.8,
+                from: "start",
                 ease: "power2.out"
             },
-            ease: "back.out(1.2)",
+            ease: "back.out(1.4)",
             clearProps: "all"
-        }, 0.3);
+        }, 0.4);
     }
 }
 
 function initEnhancedLinkAnimations() {
     const linkItems = document.querySelectorAll('.link-item');
     const profilePicture = document.getElementById('profile-picture');
+    
     let waveAnimationActive = false;
     let profileExplosionActive = false;
     let scrollAnimationActive = false;
     
+    // Initialize physics properties for each link item
     linkItems.forEach((item, index) => {
         item._originalIndex = index;
         item._isAnimating = false;
         item._baseY = 0;
+        item._physics = {
+            velocity: 0,
+            friction: 0.92,
+            spring: 0.4
+        };
+        
         gsap.set(item, {
             opacity: 1,
             scale: 1,
             rotation: 0,
+            rotationX: 0,
+            rotationY: 0,
             x: 0,
-            y: 0
+            y: 0,
+            z: 0,
+            transformStyle: "preserve-3d"
         });
     });
     
+    // Enhanced scroll physics
     let lastScrollY = window.scrollY;
-    let scrollTimeout;
+    let scrollVelocity = 0;
+    let lastScrollTime = Date.now();
     
-    function handleSoftScroll() {
-        if (scrollAnimationActive || waveAnimationActive || profileExplosionActive) return;
+    function handleAdvancedScrollPhysics() {
+        if (waveAnimationActive || profileExplosionActive) return;
         
         const currentScrollY = window.scrollY;
-        const scrollDelta = currentScrollY - lastScrollY;
-        const scrollStrength = Math.min(Math.abs(scrollDelta) * 0.1, 3); 
+        const currentTime = Date.now();
+        const deltaTime = Math.min(currentTime - lastScrollTime, 50);
         
-        if (Math.abs(scrollDelta) > 2) { 
+        // Calculate scroll velocity
+        scrollVelocity = (currentScrollY - lastScrollY) / (deltaTime / 16);
+        const scrollStrength = Math.min(Math.abs(scrollVelocity) * 0.15, 4);
+        
+        if (Math.abs(scrollVelocity) > 0.5) {
             scrollAnimationActive = true;
             
-            const scrollDirection = scrollDelta > 0 ? 1 : -1;
-            const pushStrength = scrollStrength * 0.3; 
+            const scrollDirection = scrollVelocity > 0 ? 1 : -1;
+            const pushStrength = scrollStrength * 0.4;
             
             linkItems.forEach((item, index) => {
-                const delay = index * 0.01;
-                const individualStrength = pushStrength * (1 - (index / linkItems.length) * 0.3);
+                const delay = index * 0.008;
+                const individualStrength = pushStrength * (1 - (index / linkItems.length) * 0.4);
+                const pushDistance = scrollDirection * individualStrength;
                 
+                // Apply push with physics
                 gsap.to(item, {
-                    y: scrollDirection * individualStrength,
-                    duration: 0.2,
+                    y: pushDistance,
+                    rotationX: scrollDirection * individualStrength * 0.5,
+                    duration: 0.25,
                     delay: delay,
-                    ease: "power1.out",
+                    ease: "power2.out",
                     overwrite: "auto",
                     onComplete: () => {
                         if (index === linkItems.length - 1) {
-                            setTimeout(() => {
-                                if (!waveAnimationActive && !profileExplosionActive) {
-                                    gsap.to(item, {
-                                        y: 0,
-                                        duration: 0.4,
-                                        ease: "power1.out",
-                                        overwrite: "auto"
-                                    });
-                                }
-                            }, 100);
+                            startSlowReturnPhysics();
                         }
                     }
                 });
             });
-            
-            setTimeout(() => {
-                scrollAnimationActive = false;
-            }, 300);
         }
         
         lastScrollY = currentScrollY;
+        lastScrollTime = currentTime;
+    }
+    
+    function startSlowReturnPhysics() {
+        if (waveAnimationActive || profileExplosionActive) return;
+        
+        linkItems.forEach((item, index) => {
+            const returnDelay = index * 0.02;
+            
+            gsap.to(item, {
+                y: 0,
+                rotationX: 0,
+                duration: 1.2,
+                delay: returnDelay,
+                ease: "elastic.out(1.1, 0.6)",
+                overwrite: "auto",
+                onComplete: () => {
+                    if (index === linkItems.length - 1) {
+                        scrollAnimationActive = false;
+                    }
+                }
+            });
+        });
     }
     
     let scrollThrottleTimeout;
     window.addEventListener('scroll', function() {
         if (!scrollThrottleTimeout) {
             scrollThrottleTimeout = setTimeout(() => {
-                handleSoftScroll();
+                handleAdvancedScrollPhysics();
                 scrollThrottleTimeout = null;
-            }, 16); 
+            }, 10);
         }
     });
     
+    // Enhanced Profile Picture 3D Long Press
     if (profilePicture) {
         let profileLongPressTimer;
+        let profilePressStartTime;
+        
+        profilePicture.style.transformStyle = "preserve-3d";
         
         profilePicture.addEventListener('mousedown', function(e) {
+            profilePressStartTime = Date.now();
             profileLongPressTimer = setTimeout(() => {
-                createProfileExplosionEffect();
-            }, 500);
+                create3DProfileExplosionEffect();
+            }, 600);
             
+            // 3D press effect
             gsap.to(this, {
-                scale: 0.95,
-                duration: 0.3,
+                scale: 0.92,
+                rotationY: 5,
+                rotationX: -3,
+                z: -10,
+                duration: 0.4,
                 ease: "power2.out"
             });
         });
         
         profilePicture.addEventListener('touchstart', function(e) {
+            profilePressStartTime = Date.now();
             profileLongPressTimer = setTimeout(() => {
-                createProfileExplosionEffect();
-            }, 500);
+                create3DProfileExplosionEffect();
+            }, 600);
             
             gsap.to(this, {
-                scale: 0.95,
+                scale: 0.94,
+                rotationY: 3,
+                rotationX: -2,
+                z: -8,
                 duration: 0.3,
                 ease: "power2.out"
             });
@@ -178,10 +251,16 @@ function initEnhancedLinkAnimations() {
             clearTimeout(profileLongPressTimer);
             
             if (!profileExplosionActive) {
+                const pressDuration = Date.now() - profilePressStartTime;
+                const intensity = Math.min(pressDuration / 1000, 1);
+                
                 gsap.to(profilePicture, {
                     scale: 1,
-                    duration: 0.4,
-                    ease: "elastic.out(1.2, 0.5)"
+                    rotationY: 0,
+                    rotationX: 0,
+                    z: 0,
+                    duration: 0.8 + (intensity * 0.4),
+                    ease: "elastic.out(1.3, 0.5)"
                 });
             }
         };
@@ -192,55 +271,65 @@ function initEnhancedLinkAnimations() {
         profilePicture.addEventListener('touchcancel', clearProfilePress);
     }
     
-    function createProfileExplosionEffect() {
+    function create3DProfileExplosionEffect() {
         if (profileExplosionActive || waveAnimationActive) return;
         profileExplosionActive = true;
         
         const allItems = Array.from(document.querySelectorAll('.link-item'));
         
+        // Enhanced 3D profile animation
         if (profilePicture) {
             gsap.timeline()
                 .to(profilePicture, {
-                    scale: 1.3,
-                    rotation: 360,
-                    duration: 0.3,
-                    ease: "power2.out"
+                    scale: 1.4,
+                    rotationY: 180,
+                    rotationX: 15,
+                    z: 20,
+                    duration: 0.4,
+                    ease: "power2.inOut"
                 })
                 .to(profilePicture, {
                     scale: 1,
-                    rotation: 0,
-                    duration: 0.6,
-                    ease: "elastic.out(1.5, 0.8)"
+                    rotationY: 360,
+                    rotationX: 0,
+                    z: 0,
+                    duration: 0.9,
+                    ease: "elastic.out(1.6, 0.7)"
                 });
         }
         
+        // Shockwave effect - push items downward with 3D depth
         allItems.forEach((item, index) => {
             const distanceFromCenter = Math.abs(index - Math.floor(allItems.length / 2));
-            const explosionStrength = Math.max(0.3, 1 - distanceFromCenter * 0.2);
-            const explosionDelay = distanceFromCenter * 0.05;
+            const explosionStrength = Math.max(0.4, 1 - distanceFromCenter * 0.15);
+            const explosionDelay = distanceFromCenter * 0.04;
             
+            // Downward push with slight 3D perspective
             gsap.to(item, {
-                y: (Math.random() - 0.5) * 30 * explosionStrength,
-                x: (Math.random() - 0.5) * 20 * explosionStrength,
-                scale: 1 + (Math.random() * 0.1) * explosionStrength,
-                duration: 0.4,
+                y: 25 * explosionStrength,
+                rotationX: 8 * explosionStrength,
+                scale: 1 - (explosionStrength * 0.1),
+                z: -15 * explosionStrength,
+                duration: 0.5,
                 delay: explosionDelay,
-                ease: "back.out(1.5)",
+                ease: "back.out(1.8)",
                 overwrite: "auto"
             });
         });
         
+        // Slow return with physics
         setTimeout(() => {
             allItems.forEach((item, index) => {
-                const returnDelay = index * 0.03;
+                const returnDelay = index * 0.025;
                 
                 gsap.to(item, {
                     y: 0,
-                    x: 0,
+                    rotationX: 0,
                     scale: 1,
-                    duration: 0.7,
+                    z: 0,
+                    duration: 1.4,
                     delay: returnDelay,
-                    ease: "elastic.out(1.2, 0.6)",
+                    ease: "elastic.out(1.1, 0.5)",
                     overwrite: "auto",
                     onComplete: () => {
                         if (index === allItems.length - 1) {
@@ -249,9 +338,10 @@ function initEnhancedLinkAnimations() {
                     }
                 });
             });
-        }, 600);
+        }, 700);
     }
     
+    // Enhanced Link Item Physics
     linkItems.forEach((item, index) => {
         let hoverTimeline = null;
         let pressTimeline = null;
@@ -267,23 +357,20 @@ function initEnhancedLinkAnimations() {
                 onComplete: () => { this._isAnimating = false; }
             })
             .to(this, {
-                y: -6,
-                scale: 1.03,
-                duration: 0.5,
-                ease: "back.out(1.8)",
+                y: -8,
+                scale: 1.04,
+                rotationX: -2,
+                z: 5,
+                duration: 0.6,
+                ease: "back.out(1.9)",
                 overwrite: "auto"
             })
             .to(this.querySelector('.link-icon'), {
-                scale: 1.15,
-                duration: 0.3,
-                ease: "power2.out"
-            }, 0);
-                
-
-            gsap.to(this, {
+                scale: 1.2,
+                rotationZ: 2,
                 duration: 0.4,
                 ease: "power2.out"
-            });
+            }, 0);
         });
         
         item.addEventListener('mouseleave', function(e) {
@@ -298,17 +385,16 @@ function initEnhancedLinkAnimations() {
             .to(this, {
                 y: 0,
                 scale: 1,
-                duration: 0.7,
-                ease: "elastic.out(1.1, 0.5)",
+                rotationX: 0,
+                z: 0,
+                duration: 1.2,
+                ease: "elastic.out(1.1, 0.6)",
                 overwrite: "auto"
             })
             .to(this.querySelector('.link-icon'), {
                 scale: 1,
-                duration: 0.4,
-                ease: "power2.out"
-            }, 0)
-            .to(this, {
-                duration: 0.5,
+                rotationZ: 0,
+                duration: 0.6,
                 ease: "power2.out"
             }, 0);
         });
@@ -317,13 +403,16 @@ function initEnhancedLinkAnimations() {
             if (waveAnimationActive || profileExplosionActive || scrollAnimationActive) return;
             clearTimeout(longPressTimer);
             longPressTimer = setTimeout(() => {
-                createWaveEffect(this, 'mouse', true);
-            }, 300);
+                createPhysicsWaveEffect(this, 'mouse', true);
+            }, 400);
             
+            // 3D press effect
             gsap.to(this, {
-                scale: 0.95,
-                y: 2,
-                duration: 0.1,
+                scale: 0.94,
+                y: 3,
+                rotationX: 1,
+                z: -5,
+                duration: 0.15,
                 ease: "power2.in"
             });
         });
@@ -332,11 +421,13 @@ function initEnhancedLinkAnimations() {
             if (waveAnimationActive || profileExplosionActive || scrollAnimationActive) return;
             clearTimeout(longPressTimer);
             longPressTimer = setTimeout(() => {
-                createWaveEffect(this, 'touch', true);
-            }, 300);
+                createPhysicsWaveEffect(this, 'touch', true);
+            }, 400);
             
             gsap.to(this, {
                 scale: 0.96,
+                rotationX: 0.5,
+                z: -3,
                 duration: 0.2,
                 ease: "power2.out"
             });
@@ -349,8 +440,10 @@ function initEnhancedLinkAnimations() {
                 gsap.to(item, {
                     scale: 1,
                     y: 0,
-                    duration: 0.3,
-                    ease: "elastic.out(1.2, 0.5)"
+                    rotationX: 0,
+                    z: 0,
+                    duration: 0.8,
+                    ease: "elastic.out(1.2, 0.6)"
                 });
             }
         };
@@ -361,19 +454,19 @@ function initEnhancedLinkAnimations() {
         item.addEventListener('touchcancel', clearPress);
     });
     
-    function createWaveEffect(originItem, inputType, isLongPress = false) {
+    function createPhysicsWaveEffect(originItem, inputType, isLongPress = false) {
         if (waveAnimationActive || profileExplosionActive || scrollAnimationActive) return;
         waveAnimationActive = true;
         
         const allItems = Array.from(document.querySelectorAll('.link-item'));
         const originIndex = originItem._originalIndex;
         const totalItems = allItems.length;
-        const waveStrength = isLongPress ? 1.2 : 0.8;
-        const waveDuration = isLongPress ? 0.8 : 0.6;
+        const waveStrength = isLongPress ? 1.4 : 1.0;
+        const waveDuration = isLongPress ? 1.0 : 0.7;
         
+        // Clear any existing animations
         allItems.forEach(item => {
             gsap.killTweensOf(item);
-
             gsap.set(item, {
                 opacity: 1,
                 display: 'flex',
@@ -382,34 +475,40 @@ function initEnhancedLinkAnimations() {
             item._isAnimating = true;
         });
         
+        // Enhanced origin item animation with 3D
         gsap.to(originItem, {
-            scale: 0.90,
-            y: 6,
-            duration: 0.2,
+            scale: 0.88,
+            y: 8,
+            rotationX: 4,
+            z: -8,
+            duration: 0.25,
             ease: "power2.out",
             overwrite: "auto"
         });
         
+        // Physics-based wave propagation
         allItems.forEach((item, index) => {
             if (item === originItem) return;
             
             const distance = Math.abs(index - originIndex);
             const maxDistance = Math.max(originIndex, totalItems - 1 - originIndex);
             const normalizedDistance = distance / maxDistance;
-            const waveDelay = distance * 0.05;
-            const wavePower = waveStrength * (1 - normalizedDistance * 0.7);
+            const waveDelay = distance * 0.04;
+            const wavePower = waveStrength * (1 - normalizedDistance * 0.6);
             
             const direction = index < originIndex ? -1 : 1;
-            const pushDistance = 18 * wavePower * direction;
+            const pushDistance = 22 * wavePower * direction;
             
             if (wavePower > 0.05) {
                 gsap.to(item, {
                     y: pushDistance,
-                    x: (Math.random() - 0.5) * 8 * wavePower,
-                    scale: 1 + wavePower * 0.06,
-                    duration: waveDuration * 0.6,
+                    x: (Math.random() - 0.5) * 6 * wavePower,
+                    rotationX: 3 * wavePower * direction,
+                    scale: 1 + wavePower * 0.08,
+                    z: -10 * wavePower,
+                    duration: waveDuration * 0.7,
                     delay: waveDelay,
-                    ease: "back.out(1.6)",
+                    ease: "back.out(1.7)",
                     overwrite: "auto",
                     onComplete: () => {
                         item._isAnimating = false;
@@ -418,18 +517,21 @@ function initEnhancedLinkAnimations() {
             }
         });
         
+        // Enhanced slow return with physics
         setTimeout(() => {
             allItems.forEach((item, index) => {
                 const distance = Math.abs(index - originIndex);
-                const returnDelay = distance * 0.015;
+                const returnDelay = distance * 0.012;
                 
                 gsap.to(item, {
                     y: 0,
                     x: 0,
+                    rotationX: 0,
                     scale: 1,
-                    duration: 0.8,
+                    z: 0,
+                    duration: 1.6,
                     delay: returnDelay,
-                    ease: "elastic.out(1.2, 0.6)",
+                    ease: "elastic.out(1.1, 0.5)",
                     overwrite: "auto",
                     onComplete: () => {
                         if (index === allItems.length - 1) {
@@ -439,7 +541,7 @@ function initEnhancedLinkAnimations() {
                     }
                 });
             });
-        }, waveDuration * 450);
+        }, waveDuration * 600);
     }
 }
 
@@ -453,16 +555,42 @@ function initPremiumBottomSheets() {
     let activeSheet = null;
     let isAnimating = false;
     
-    function resetAllLinkItems() {
+    function createSheetOpeningPhysics() {
+        if (linkItems.length > 0) {
+            // Enhanced physics push effect
+            gsap.to(linkItems, {
+                y: -15,
+                scale: 0.98,
+                rotationX: 3,
+                z: -20,
+                opacity: 0.9,
+                duration: 0.5,
+                ease: "power2.out",
+                stagger: {
+                    amount: 0.3,
+                    from: "start"
+                },
+                overwrite: "auto"
+            });
+        }
+    }
+    
+    function resetSheetClosingPhysics() {
         if (linkItems.length > 0) {
             gsap.to(linkItems, {
                 y: 0,
                 x: 0,
                 scale: 1,
-                rotation: 0,
-                duration: 0.5,
+                rotationX: 0,
+                rotationY: 0,
+                z: 0,
+                opacity: 1,
+                duration: 1.0,
                 ease: "elastic.out(1.1, 0.6)",
-                stagger: 0.02,
+                stagger: {
+                    amount: 0.4,
+                    from: "end"
+                },
                 overwrite: "auto"
             });
         }
@@ -471,36 +599,26 @@ function initPremiumBottomSheets() {
     if (profilePicture && profileSheet) {
         profilePicture.addEventListener('click', function(e) {
             if (isAnimating) return;
-            openPremiumSheet(profileSheet);
+            openPremiumPhysicsSheet(profileSheet);
         });
     }
     
-    function openPremiumSheet(sheetElement) {
+    function openPremiumPhysicsSheet(sheetElement) {
         isAnimating = true;
         
-        resetAllLinkItems();
+        createSheetOpeningPhysics();
         
         sheetElement.classList.add('active');
         overlay.classList.add('active');
         document.body.style.overflow = 'hidden';
         activeSheet = sheetElement;
         
-        if (linkItems.length > 0) {
-            gsap.to(linkItems, {
-                y: -8, 
-                scale: 0.995,
-                duration: 0.3,
-                ease: "power1.out",
-                stagger: 0.005,
-                overwrite: "auto"
-            });
-        }
-        
         if (typeof gsap !== 'undefined') {
             gsap.set(sheetElement, { 
                 y: '100%', 
                 opacity: 1,
-                scale: 1
+                scale: 1,
+                rotationX: 5
             });
             gsap.set(overlay, { opacity: 0 });
             
@@ -510,30 +628,41 @@ function initPremiumBottomSheets() {
                 }
             });
             
+            // Overlay with depth
             masterTimeline.to(overlay, {
                 opacity: 1,
-                duration: 0.4,
+                duration: 0.5,
                 ease: "power2.out"
             }, 0);
             
+            // Sheet entrance with 3D perspective
             masterTimeline.to(sheetElement, {
                 y: '0%',
-                duration: 0.5,
+                rotationX: 0,
+                duration: 0.6,
                 ease: "power2.out"
             }, 0.1);
             
+            // Staggered content entrance with physics
             const contentElements = sheetElement.querySelectorAll('.profile-card, .profile-avatar, .profile-info, .more-about-btn');
             if (contentElements.length > 0) {
                 masterTimeline.fromTo(contentElements, {
-                    y: 20,
-                    opacity: 0
+                    y: 30,
+                    opacity: 0,
+                    rotationX: -10,
+                    z: -30
                 }, {
                     y: 0,
                     opacity: 1,
-                    duration: 0.4,
-                    stagger: 0.1,
+                    rotationX: 0,
+                    z: 0,
+                    duration: 0.6,
+                    stagger: {
+                        amount: 0.3,
+                        ease: "back.out(1.5)"
+                    },
                     ease: "power2.out"
-                }, 0.2);
+                }, 0.3);
             }
         } else {
             sheetElement.style.transform = 'translateY(0)';
@@ -547,7 +676,7 @@ function initPremiumBottomSheets() {
         
         isAnimating = true;
         
-        resetAllLinkItems();
+        resetSheetClosingPhysics();
         
         if (typeof gsap !== 'undefined') {
             const closeTimeline = gsap.timeline({
@@ -560,15 +689,18 @@ function initPremiumBottomSheets() {
                 }
             });
             
+            // Sheet exit with physics
             closeTimeline.to(activeSheet, {
                 y: '100%',
-                duration: 0.4,
+                rotationX: 8,
+                duration: 0.5,
                 ease: "power2.inOut"
             }, 0);
             
+            // Overlay fade
             closeTimeline.to(overlay, {
                 opacity: 0,
-                duration: 0.3,
+                duration: 0.4,
                 ease: "power2.out"
             }, 0);
         } else {
@@ -607,7 +739,7 @@ function initPremiumBottomSheets() {
         }
     });
     
-    window.resetLinkItems = resetAllLinkItems;
+    window.resetLinkItems = resetSheetClosingPhysics;
 }
 
 function initContentProtection() {
@@ -726,24 +858,28 @@ function initImageOptimizations() {
     });
 }
 
+// Initialize image optimizations
 initImageOptimizations();
 
+// Enhanced resize handling
 let resizeTimeout;
 window.addEventListener('resize', function() {
     clearTimeout(resizeTimeout);
     resizeTimeout = setTimeout(() => {
-        console.log('Window resized - optimizing layout');
+        console.log('Window resized - optimizing physics layout');
     }, 250);
 });
 
+// Error handling
 window.addEventListener('error', function(e) {
-    console.error('Global error caught:', e.error);
+    console.error('Global physics error caught:', e.error);
 });
 
 window.addEventListener('unhandledrejection', function(e) {
-    console.warn('Unhandled promise rejection:', e.reason);
+    console.warn('Unhandled physics promise rejection:', e.reason);
 });
 
+// Cleanup on exit
 window.addEventListener('beforeunload', function() {
     if (typeof gsap !== 'undefined') {
         gsap.globalTimeline.clear();
