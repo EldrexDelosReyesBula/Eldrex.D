@@ -1,0 +1,101 @@
+//Global CSS | sage
+
+:root {
+    /* Sage Color Palette - Base Colors */
+    --sage-50: #f8faf9;
+    --sage-100: #f1f4f3;
+    --sage-200: #e4e9e7;
+    --sage-300: #d1d9d5;
+    --sage-400: #a8b8b1;
+    --sage-500: #879a90;
+    --sage-600: #6a7f74;
+    --sage-700: #57685f;
+    --sage-800: #48544d;
+    --sage-900: #3e4742;
+    --sage-950: #252c28;
+
+    /* Semantic Color Variables */
+    --primary: var(--sage-600);
+    --primary-hover: var(--sage-700);
+    --text-primary: var(--sage-900);
+    --text-secondary: var(--sage-700);
+    --bg-primary: var(--sage-50);
+    --bg-secondary: var(--sage-100);
+    --bg-tertiary: var(--sage-200);
+    --shadow-color: rgba(106, 127, 116, 0.08);
+    --card-bg: #ffffff;
+    --quote-bg: var(--sage-100);
+    
+    /* Layout Variables */
+    --border-radius: 1.5rem;
+    --transition-all: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    --header-height: 70px;
+    
+    /* Animation & State Variables */
+    --skeleton-color: rgba(106, 127, 116, 0.05);
+    --skeleton-animation: skeleton-loading 1.5s ease-in-out infinite;
+    
+    /* Additional Variables from quote.css */
+    --overlay-icon: var(--sage-600);
+    
+    /* Extended Semantic Variables for better theming */
+    --border-color: var(--sage-200);
+    --hover-color: var(--sage-100);
+    --active-color: var(--sage-200);
+    --focus-ring: rgba(106, 127, 116, 0.3);
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --error-color: #ef4444;
+    --info-color: var(--sage-600);
+    
+    /* Typography Scale */
+    --text-xs: 0.75rem;
+    --text-sm: 0.875rem;
+    --text-base: 1rem;
+    --text-lg: 1.125rem;
+    --text-xl: 1.25rem;
+    --text-2xl: 1.5rem;
+    --text-3xl: 1.875rem;
+    --text-4xl: 2.25rem;
+    
+    /* Spacing Scale */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-10: 2.5rem;
+    --space-12: 3rem;
+    --space-16: 4rem;
+    
+    /* Z-index Scale */
+    --z-dropdown: 1000;
+    --z-sticky: 1020;
+    --z-fixed: 1030;
+    --z-modal-backdrop: 1040;
+    --z-modal: 1050;
+    --z-popover: 1060;
+    --z-tooltip: 1070;
+    
+    /* Breakpoints (for reference in JS/media queries) */
+    --breakpoint-sm: 640px;
+    --breakpoint-md: 768px;
+    --breakpoint-lg: 1024px;
+    --breakpoint-xl: 1280px;
+    --breakpoint-2xl: 1536px;
+}
+
+/* Skeleton Loading Animation */
+@keyframes skeleton-loading {
+    0% {
+        background-color: var(--skeleton-color);
+    }
+    50% {
+        background-color: rgba(106, 127, 116, 0.1);
+    }
+    100% {
+        background-color: var(--skeleton-color);
+    }
+}
