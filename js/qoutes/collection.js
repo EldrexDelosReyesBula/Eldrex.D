@@ -147,6 +147,50 @@ const contentData = {
                 {
                     text: "Failure is not the end; it is the beginning of learning.",
                     author: "Eldrex Delos Reyes Bula"
+                },
+                {
+                    text: "When you think before you move, you win before you start.",
+                    author: "Eldrex Delos Reyes Bula"
+                },
+                {
+                    text: "Think it through, then see it through.",
+                    author: "Eldrex Delos Reyes Bula"
+                },
+                {
+                    text: "Plan like an architect, act like an artist",
+                    author: "Eldrex Delos Reyes Bula"
+                },
+                {
+                    text: "Some doors open inward because not every answer waits outside.",
+                    author: "Eldrex Delos Reyes Bula"
+                },
+                {
+                    text: "When the waves hit, I’ll learn how to breathe underwater",
+                    author: "Eldrex Delos Reyes Bula"
+                },
+                {
+                    text: "You can’t fix what you fake — and I faked it until I failed.",
+                    author: "Eldrex Delos Reyes Bula"
+                },
+                {
+                    text: "Our thoughts are no longer fully ours when machines begin to guide what we think about.",
+                    author: "Eldrex Delos Reyes Bula"
+                },
+                {
+                    text: "If discipline is lost, even the brightest mind will stumble in darkness.",
+                    author: "Eldrex Delos Reyes Bula"
+                },
+                {
+                    text: "I raise my hand until the cloud reaches me, wishing the wind could carry what words could never say",
+                    author: "Eldrex Delos Reyes Bula"
+                },
+                {
+                    text: "I may lack what others have, but my ambition will make them look up to me.",
+                    author: "Eldrex Delos Reyes Bula"
+                },
+                {
+                    text: "Everything begins with you — never forget that.",
+                    author: "Eldrex Delos Reyes Bula"
                 }
             ]
         };
@@ -209,10 +253,10 @@ const contentData = {
                 contentData.quotes.forEach((quote, index) => {
                     const quoteElement = this.createQuoteElement(quote, index);
                     quotesContainer.appendChild(quoteElement);
-                    
+
                     // Add animation delay based on index
                     quoteElement.style.animationDelay = `${1.8 + (index * 0.2)}s`;
-                    
+
                     // Add click event for export
                     const exportBtn = quoteElement.querySelector('.export-quote-btn');
                     exportBtn.addEventListener('click', (e) => {
@@ -228,14 +272,14 @@ const contentData = {
                 const cancelBtn = document.getElementById('cancelExport');
                 const exportBtn = document.getElementById('exportAsPng');
                 const preview = document.getElementById('exportPreview');
-                
+
                 // Close modal events
                 [closeBtn, cancelBtn].forEach(btn => {
                     btn.addEventListener('click', () => {
                         exportModal.classList.remove('active');
                     });
                 });
-                
+
                 // Background color selection
                 document.querySelectorAll('.export-option').forEach(option => {
                     option.addEventListener('click', () => {
@@ -243,13 +287,13 @@ const contentData = {
                             opt.classList.remove('active');
                         });
                         option.classList.add('active');
-                        
+
                         // Update preview
                         preview.className = 'export-preview';
                         preview.classList.add(option.dataset.bg);
                     });
                 });
-                
+
                 // Font selection
                 document.querySelectorAll('.font-option').forEach(option => {
                     option.addEventListener('click', () => {
@@ -257,7 +301,7 @@ const contentData = {
                             opt.classList.remove('active');
                         });
                         option.classList.add('active');
-                        
+
                         // Update preview
                         const quoteText = document.getElementById('previewQuoteText');
                         const quoteAuthor = document.getElementById('previewQuoteAuthor');
@@ -267,7 +311,7 @@ const contentData = {
                         quoteAuthor.classList.add(option.dataset.font);
                     });
                 });
-                
+
                 // Alignment selection
                 document.querySelectorAll('.alignment-option').forEach(option => {
                     option.addEventListener('click', () => {
@@ -275,7 +319,7 @@ const contentData = {
                             opt.classList.remove('active');
                         });
                         option.classList.add('active');
-                        
+
                         // Update preview
                         const quoteText = document.getElementById('previewQuoteText');
                         const quoteAuthor = document.getElementById('previewQuoteAuthor');
@@ -285,12 +329,12 @@ const contentData = {
                         quoteAuthor.classList.add(option.dataset.align);
                     });
                 });
-                
+
                 // Export as PNG
                 exportBtn.addEventListener('click', () => {
                     this.exportQuoteAsPng();
                 });
-                
+
             }
 
             openExportModal(quote) {
@@ -299,14 +343,14 @@ const contentData = {
                 const quoteText = document.getElementById('previewQuoteText');
                 const quoteAuthor = document.getElementById('previewQuoteAuthor');
                 const hiddenCode = document.getElementById('hiddenCode');
-                
+
                 quoteText.textContent = `"${quote.text}"`;
                 quoteAuthor.textContent = `— ${quote.author}`;
-                
+
                 // Generate unique code
                 const uniqueCode = this.generateUniqueCode();
                 hiddenCode.textContent = `#${uniqueCode}`;
-                
+
                 exportModal.classList.add('active');
             }
 
@@ -318,13 +362,13 @@ const contentData = {
 
             exportQuoteAsPng() {
                 const preview = document.getElementById('exportPreview');
-                
+
                 // Temporarily adjust preview for better export
                 const originalWidth = preview.style.width;
                 const originalHeight = preview.style.height;
                 preview.style.width = '800px';
                 preview.style.height = '400px';
-                
+
                 html2canvas(preview, {
                     scale: 3,
                     backgroundColor: null,
@@ -334,16 +378,16 @@ const contentData = {
                     // Restore original dimensions
                     preview.style.width = originalWidth;
                     preview.style.height = originalHeight;
-                    
+
                     // Store canvas for sharing
                     this.currentExportCanvas = canvas;
-                    
+
                     // Create download link
                     const link = document.createElement('a');
                     link.download = `quote-${Date.now()}.png`;
                     link.href = canvas.toDataURL('image/png');
                     link.click();
-                    
+
                     // Close modal
                     document.getElementById('exportModal').classList.remove('active');
                 });
@@ -354,17 +398,17 @@ const contentData = {
                     alert('Please export the quote first before sharing.');
                     return;
                 }
-                
+
                 const canvas = this.currentExportCanvas;
                 const dataURL = canvas.toDataURL('image/png');
-                
+
                 // For demonstration purposes, we'll just download the image
                 // In a real implementation, you would use platform-specific APIs
                 const link = document.createElement('a');
                 link.download = `quote-to-share-${platform}.png`;
                 link.href = dataURL;
                 link.click();
-                
+
                 // Show success message
                 alert(`Quote prepared for sharing on ${platform}. In a real implementation, this would open the ${platform} sharing dialog.`);
             }
